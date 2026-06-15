@@ -1,0 +1,38 @@
+name: Actualizar datos del circuito
+# Re-scrapea r2sports en los runners de GitHub y commitea data/.
+# GitHub Pages sirve esos JSON -> la web se actualiza sola, 100% online, sin proxy.
+# El generador solo re-baja el torneo activo y solo commitea si hay datos nuevos.
+on:
+  workflow_dispatch:           # "Actualizar ahora" manual desde la pestaña Actions
+  schedule:
+    # Fin de semana de torneo: cada 3 h (vie/sáb/dom). Horario UTC (Chile = UTC-4/-3).
+    - cron: '0 */3 * * 5,6,0'
+    # Miércoles en la noche en Chile (~21:00) = jueves 01:00 UTC.
+    - cron: '0 1 * * 4'
+permissions:
+  contents: write
+concurrency:
+  group: update-data
+  cancel-in-progress: true
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Generar data/ (solo re-baja el torneo activo)
+        # Sin argumentos: modo incremental. Para forzar todo: node generar-datos.js --all
+        run: node generar-datos.js
+      - name: Commit si cambió
+        run: |
+          if ! git diff --quiet -- data data.json; then
+            git config user.name "circuito-bot"
+            git config user.email "bot@users.noreply.github.com"
+            git add data data.json
+            git commit -m "Actualizar datos del circuito $(date -u +%FT%TZ)"
+            git push
+          else
+            echo "Sin cambios"
+          fi
