@@ -32,7 +32,7 @@
   function isForfeit(raw) { return /WBF|No\s*Show|Default|Forfeit|Bye/i.test(raw); }
   function norm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 
-  var BY_DEPTH = ['Final', 'Semifinales', 'Cuartos', 'Octavos', '16avos', '32avos', '64avos', '128avos'];
+  var BY_DEPTH = ['Final', 'Semifinales', 'Cuartos', 'Ronda de 16', 'Ronda de 32', 'Ronda de 64', 'Ronda de 128', 'Ronda de 256'];
   var ORDER_BY_DEPTH = [100, 90, 80, 70, 60, 50, 40, 30];
 
   function cellInner(html, start) {

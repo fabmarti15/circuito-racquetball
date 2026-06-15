@@ -42,14 +42,33 @@
     [/\bGirl's\b/gi, 'Niñas'], [/\bMixed\b/gi, 'Mixto'], [/\bDoubles\b/gi, 'Dobles'],
     [/\bSingles\b/gi, 'Singles'], [/\bNovice\b/gi, 'Novicios'], [/\bJuniors\b/gi, 'Juveniles'],
     [/\bJunior\b/gi, 'Juvenil'], [/\bMultibounce\b/gi, 'Multibote'],
-    [/\bConsolation\b/gi, 'Consolación'], [/\bPlayoff\b/gi, 'Definición'],
+    [/\bConsolation\b/gi, 'Por puestos'], [/\bPlayoff\b/gi, 'Por puestos'],
     [/\bDropdown\b/gi, 'Repechaje'], [/\band Under\b/gi, 'y menores']
   ];
+  // Limpia etiquetas sucias de r2sports: arregla "WoSingles" (W.O. pegado), quita ":" final,
+  // dedup de partes redundantes ("Singles Open: Open" -> "Singles Open") y palabras repetidas.
+  function limpiarLabel(s) {
+    s = String(s || '').replace(/[´`’]/g, "'").replace(/\s+/g, ' ').trim();
+    s = s.replace(/\bWo(?=[A-Z])/g, '');
+    s = s.replace(/\bOPEN\b/g, 'Open');
+    const parts = s.split(':').map(function (x) { return x.trim(); }).filter(Boolean);
+    const kept = [];
+    parts.forEach(function (p) {
+      const low = p.toLowerCase();
+      const dup = kept.some(function (k) {
+        const kl = k.toLowerCase();
+        return kl === low || low.split(' ').every(function (w) { return kl.indexOf(w) >= 0; });
+      });
+      if (!dup) kept.push(p);
+    });
+    s = kept.join(': ').replace(/\b([A-Za-zÀ-ÿ]+)(\s+\1)+\b/gi, '$1');
+    return s.replace(/\s+/g, ' ').replace(/:\s*$/, '').trim();
+  }
   function traducirCategoria(name) {
     let s = String(name || '').replace(/[´`’]/g, "'").replace(/\s+/g, ' ').trim();
     for (const [re, r] of FRASES) s = s.replace(re, r);
     for (const [re, r] of TOKENS) s = s.replace(re, r);
-    return s.replace(/\s+/g, ' ').trim();
+    return limpiarLabel(s);
   }
   // Categoría "base" para agrupar el ranking: quita sufijos de cuadro/consolación.
   function categoriaBase(name) {
@@ -57,7 +76,7 @@
     s = s.replace(/\s+(Consolation|Playoff|Dropdown|Consolación|Definición|Repechaje)\b.*$/i, '');
     s = s.replace(/\s+(ORO|PLATA|BRONCE|NO JUGAR|BLANCO)\b.*$/i, '');
     s = s.replace(/\s+Group:?\s*\d+.*$/i, '');
-    return s.trim();
+    return limpiarLabel(s);
   }
   // Nivel de cuadro olímpico (para el puntaje FECHIRA).
   function nivelCuadro(name) {

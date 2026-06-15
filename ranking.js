@@ -79,7 +79,7 @@
         let pts = 0; last4.forEach(function (tid) { pts += p.perTid[tid] || 0; });
         return { uid: p.uid, name: p.name, points: pts, played: 0 };
       }).filter(function (e) { return e.points > 0; }).sort(byPts);
-      if (cat.all.length) out.categories.push(cat);
+      if (cat.all.length >= 2) out.categories.push(cat);
     });
     out.categories.sort(function (a, b) { return a.label.localeCompare(b.label); });
     return out;
