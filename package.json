@@ -1,0 +1,7 @@
+{
+  "name": "circuito-racquetball-chile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visor amigable de torneos de racquetball (datos desde r2sports.com)",
+  "engines": { "node": ">=18" }
+}

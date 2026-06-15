@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+# Artefactos obsoletos (quedaron de la etapa surge/Vercel/Netlify; ahora usamos GitHub Pages)
+index-portable.html
+vercel.json
+netlify.toml
+netlify/
+api/
+PUBLICAR-EN-GITHUB.command
+COMO-PUBLICAR-EN-GITHUB.md
+HANDOFF-CLAUDE-CODE.md
+LEEME.md
