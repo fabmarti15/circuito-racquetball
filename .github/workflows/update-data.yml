@@ -5,9 +5,12 @@ name: Actualizar datos del circuito
 on:
   workflow_dispatch:           # "Actualizar ahora" manual desde la pestaña Actions
   schedule:
-    # Fin de semana de torneo: cada 3 h (vie/sáb/dom). Horario UTC (Chile = UTC-4/-3).
-    - cron: '0 */3 * * 5,6,0'
-    # Miércoles en la noche en Chile (~21:00) = jueves 01:00 UTC.
+    # Fin de semana de torneo, en horario de juego en Chile (09:00-20:00 = 13:00-00:00 UTC):
+    # cada 10 min. GitHub puede atrasar los cron, así que en la práctica son 10-15 min.
+    - cron: '*/10 13-23 * * 5,6,0'
+    # Cola de la noche chilena (20:00-23:00 vie/sáb/dom = 00:00-03:00 UTC del día siguiente).
+    - cron: '*/10 0-2 * * 6,0,1'
+    # Fuera de torneo, una pasada semanal: miércoles ~21:00 Chile = jueves 01:00 UTC.
     - cron: '0 1 * * 4'
 permissions:
   contents: write
@@ -24,6 +27,11 @@ jobs:
           node-version: '20'
       - name: Generar data/ (solo re-baja el torneo activo)
         # Sin argumentos: modo incremental. Para forzar todo: node generar-datos.js --all
+        # RQ_PAUSA/RQ_CONCURRENCIA mantienen el ritmo bajo: r2sports bloquea por IP
+        # si se le pega muy seguido, y un bloqueo dejaría la web sin horarios.
+        env:
+          RQ_PAUSA: '1200'
+          RQ_CONCURRENCIA: '2'
         run: node generar-datos.js
       - name: Commit si cambió
         run: |

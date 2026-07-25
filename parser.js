@@ -31,11 +31,24 @@
   function clean(name) { return strip(name).replace(/\s*:\s*$/, '').trim(); }
 
   // ---------- TRADUCCIÓN DE CATEGORÍAS ----------
+  // Ojo: en los torneos chilenos las divisiones juveniles son mixtas, pero r2sports
+  // las rotula "Boy's" / "Boys" igual (hay niñas inscritas en "Boy's Singles: Juniors A").
+  // Por eso las juveniles se traducen SIN género: "Singles Juveniles A".
+  // OJO con el orden y con los \b: sin límite de palabra, /Men's Singles/i también
+  // hace match DENTRO de "Women's Singles" y convertía las divisiones de damas en
+  // varones (por eso existía el parche "WoSingles" más abajo). Damas primero y \b.
   const FRASES = [
-    [/Men's Singles/gi, 'Singles Varones'], [/Women's Singles/gi, 'Singles Damas'],
-    [/Boy's Singles/gi, 'Singles Niños'], [/Girl's Singles/gi, 'Singles Niñas'],
-    [/Men's Doubles/gi, 'Dobles Varones'], [/Women's Doubles/gi, 'Dobles Damas'],
-    [/Mixed Doubles/gi, 'Dobles Mixto'], [/Junior Singles/gi, 'Singles Juvenil']
+    [/\bWomen's Singles/gi, 'Singles Damas'], [/\bWomen's Doubles/gi, 'Dobles Damas'],
+    [/\bMen's Singles/gi, 'Singles Varones'],
+    [/\bBoys?'?s? Singles:?\s*Juniors/gi, 'Singles Juveniles'],
+    [/\bGirls?'?s? Singles:?\s*Juniors/gi, 'Singles Juveniles'],
+    [/\bBoys?'?s? Doubles/gi, 'Dobles'], [/\bGirls?'?s? Doubles/gi, 'Dobles'],
+    [/\bBoy's Singles/gi, 'Singles Niños'], [/\bGirl's Singles/gi, 'Singles Niñas'],
+    [/\bMen's Doubles/gi, 'Dobles Varones'],
+    [/Mixed Doubles/gi, 'Dobles Mixto'], [/Junior Singles/gi, 'Singles Juvenil'],
+    [/\bOpen Losers\b/gi, 'Open · Repechaje'], [/\bLosers\b/gi, 'Repechaje'],
+    [/\bGroup:?\s*(\d+)/gi, 'Grupo $1'], [/\bAdvanced\b/gi, 'Avanzado'],
+    [/\bBeginner\b/gi, 'Principiante'], [/\bIntermediate\b/gi, 'Intermedio']
   ];
   const TOKENS = [
     [/\bMen's\b/gi, 'Varones'], [/\bWomen's\b/gi, 'Damas'], [/\bBoy's\b/gi, 'Niños'],
@@ -73,9 +86,10 @@
   // Categoría "base" para agrupar el ranking: quita sufijos de cuadro/consolación.
   function categoriaBase(name) {
     let s = String(name || '').replace(/\s+/g, ' ').trim();
-    s = s.replace(/\s+(Consolation|Playoff|Dropdown|Consolación|Definición|Repechaje)\b.*$/i, '');
+    s = s.replace(/\s*·?\s*(Consolation|Playoff|Dropdown|Consolación|Definición|Repechaje|Por puestos)\b.*$/i, '');
     s = s.replace(/\s+(ORO|PLATA|BRONCE|NO JUGAR|BLANCO)\b.*$/i, '');
-    s = s.replace(/\s+Group:?\s*\d+.*$/i, '');
+    s = s.replace(/\s+(Group|Grupo):?\s*\d+.*$/i, '');
+    s = s.replace(/[\s·:]+$/, '');
     return limpiarLabel(s);
   }
   // Nivel de cuadro olímpico (para el puntaje FECHIRA).
@@ -227,7 +241,12 @@
         const players = splitPlayers(cells[c]);
         if (players.length) placements.push({ rank: c - 4, label: PLACE_LABELS[c - 5] || ('Puesto ' + (c - 4)), players: players });
       }
-      if (placements.length) divisions.push({ code: code, type: type, name: name, nameEs: traducirCategoria(name), entries: entries, drawType: drawType, placements: placements });
+      // viewResults.asp parte la división en dos columnas: Type ("Women's Singles")
+      // y Name ("Open"). Usar solo Name borraba el género y mezclaba damas con
+      // varones en el ranking (p. ej. una finalista de Dobles Damas quedaba en
+      // "Dobles Varones: Open"). Se recompone la etiqueta completa.
+      const full = type && name ? type + ': ' + name : (type || name);
+      if (placements.length) divisions.push({ code: code, type: type, name: name, fullName: full, nameEs: traducirCategoria(full), entries: entries, drawType: drawType, placements: placements });
     }
     const tally = {};
     function add(p, kind) {

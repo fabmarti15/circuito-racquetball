@@ -19,13 +19,31 @@ const RANK = require(path.join(__dirname, 'ranking.js'));
 const VB = require(path.join(__dirname, 'bracket.js'));
 
 const BASE = 'https://www.r2sports.com/tourney';
-const UA = 'Mozilla/5.0 (compatible; CircuitoRacquetballChile/2.0)';
+const UA = 'Mozilla/5.0 (compatible; CircuitoRacquetballChile/2.0; +https://github.com/fabmarti15/circuito-racquetball)';
 const DATA = path.join(__dirname, 'data');
+// r2sports bloquea por IP si se le pega muy seguido (pasó el 25-07-2026: devolvía
+// "This IP has been blocked" y una corrida dejó el torneo sin horarios). Se limita
+// el ritmo y se detecta el bloqueo para NUNCA sobrescribir datos buenos con vacío.
+const PAUSA_MS = +(process.env.RQ_PAUSA || 900);
+const CONCURRENCIA = +(process.env.RQ_CONCURRENCIA || 2);
+class FuenteBloqueada extends Error {}
+let ultimoGet = 0;
+function esperaTurno() {
+  const ahora = Date.now(), falta = ultimoGet + PAUSA_MS - ahora;
+  ultimoGet = falta > 0 ? ultimoGet + PAUSA_MS : ahora;
+  return falta > 0 ? new Promise(function (r) { setTimeout(r, falta); }) : Promise.resolve();
+}
+function revisarBloqueo(html) {
+  if (/IP\s+has\s+been\s+blocked/i.test(html) || (html.length < 400 && /blocked/i.test(html))) {
+    throw new FuenteBloqueada('r2sports bloqueó la IP');
+  }
+  return html;
+}
 
 // Fechas del Circuito Nacional de Chile en r2sports (descubiertas vía buscador
 // sportID=1&countryID=114). Editar/añadir aquí cuando haya nuevas fechas.
 const CIRCUITO = [
-  '54277', '54093',                       // 2026
+  '54324', '54277', '54093',              // 2026
   '51723', '51161', '49498',              // 2025
   '46544', '46095', '45666', '45351'      // 2024
 ];
@@ -47,12 +65,28 @@ function rawGet(u, redirects) {
     req.setTimeout(30000, function () { req.destroy(new Error('timeout')); });
   });
 }
+// r2sports mezcla codificaciones: la mayoría de páginas son iso-8859-1, pero los
+// reportes de tourneyDay/ declaran charset=UTF-8. Decodificar todo como latin1
+// rompía los acentos en horarios ("CatalÃ¡n"). Se decide por header y, si el
+// header miente, por sniff del <meta> y de la validez del UTF-8.
+function decodeBody(buf, contentType) {
+  const ct = String(contentType || '').toLowerCase();
+  const head = buf.slice(0, 2048).toString('latin1').toLowerCase();
+  const metaUtf8 = /<meta[^>]+charset=["']?utf-8/.test(head);
+  const declaraUtf8 = ct.indexOf('utf-8') >= 0 || metaUtf8;
+  if (declaraUtf8) {
+    const utf8 = buf.toString('utf8');
+    if (utf8.indexOf('�') < 0) return utf8; // UTF-8 válido
+  }
+  return buf.toString('latin1');
+}
 async function g(u) {
+  await esperaTurno();
   if (typeof fetch === 'function') {
     const r = await fetch(u, { headers: { 'User-Agent': UA, 'Accept-Language': 'es' }, redirect: 'follow' });
-    return Buffer.from(await r.arrayBuffer()).toString('latin1');
+    return revisarBloqueo(decodeBody(Buffer.from(await r.arrayBuffer()), r.headers.get('content-type')));
   }
-  return (await rawGet(u, 6)).toString('latin1');
+  return revisarBloqueo(decodeBody(await rawGet(u, 6), ''));
 }
 async function pool(items, n, fn) {
   const res = []; let i = 0;
@@ -186,8 +220,8 @@ async function buildTournament(tid) {
   const results = R2.parseResults(rs);
 
   // llaves: árbol completo desde view-bracket.asp (drawOut redirige)
-  const brackets = {};
-  await pool(divisions, 5, async function (d) {
+  let brackets = {};
+  await pool(divisions, CONCURRENCIA, async function (d) {
     const key = d.divID + '_' + d.combinedID;
     let p = { available: false, type: 'elim', rounds: [], entrants: [], standings: [], champion: '' };
     try { p = VB(await g(`${BASE}/drawsOut/drawOut.asp?TID=${tid}&divID=${d.divID}&combinedID=${d.combinedID}`)); }
@@ -200,9 +234,13 @@ async function buildTournament(tid) {
     };
   });
 
-  // si el resumen viewResults está vacío, derivar resultados/medallas desde las llaves
+  // Si viewResults.asp está vacío se pueden derivar podios desde las llaves, PERO
+  // sólo con el torneo terminado. Con el torneo en curso la inferencia miente: el
+  // parser de llaves toma como "Final" rondas que no lo son y como campeón el
+  // nombre proyectado del cabeza de serie (visto en TID 54324: daba campeón de
+  // Varones Open antes de jugarse la final). Preferimos no mostrar podio.
   let res = results;
-  if (!res.available) {
+  if (!res.available && statusOf(tournament) === 'finished') {
     const derived = resultsFromBrackets(brackets, divisions, players);
     if (derived.available) res = derived;
   }
@@ -235,6 +273,40 @@ async function buildTournament(tid) {
     });
   } catch (e) { scheduleStatus = 'error'; }
 
+  // partidos jugados: mismo reporte pero "results". Trae día, hora, UID y marcador,
+  // que es justo lo que las llaves no dan de forma cronológica.
+  let matches = [];
+  try {
+    const mr = R2.parseMatchReport(await g(`${BASE}/tourneyDay/mediaMatchResults.asp?TID=${tid}&reportType=results&resultsOption=byDiv&matchDate=all&playerSex=`));
+    (mr.divisions || []).forEach(function (d) {
+      d.matches.forEach(function (m) {
+        const a = m.players[0] || null, b = m.players[1] || null;
+        if (!a && !b) return;
+        matches.push({
+          division: d.divisionEs, divisionRaw: d.division, divID: d.divID, combinedID: d.combinedID,
+          round: m.round, day: m.day, time: m.time,
+          ganador: a ? { uid: a.uid || '', name: a.name, loc: a.loc || '' } : null,
+          perdedor: b ? { uid: b.uid || '', name: b.name, loc: b.loc || '' } : null,
+          marcador: m.rawScore || '', games: m.games || [], forfeit: !!m.forfeit
+        });
+      });
+    });
+  } catch (e) { matches = []; }
+
+  // Red de seguridad: si esta corrida no trajo horarios o partidos pero el archivo
+  // anterior sí los tenía, se conservan los viejos y se avisa desde cuándo son.
+  const previo = leerPrevio(tid);
+  let desdeCache = '';
+  if (previo) {
+    if (!schedule.length && (previo.schedule || []).length) {
+      schedule = previo.schedule; scheduleStatus = 'cache';
+      desdeCache = previo.horariosDesde || previo.updatedAt || '';
+    }
+    if (!matches.length && (previo.matches || []).length) matches = previo.matches;
+    if (!Object.keys(brackets || {}).length && Object.keys(previo.brackets || {}).length) brackets = previo.brackets;
+    if (!res.available && (previo.results || {}).available) res = previo.results;
+  }
+
   return {
     tid: String(tid),
     tournament: tournament,
@@ -247,9 +319,16 @@ async function buildTournament(tid) {
     schedule: schedule,
     scheduleStatus: scheduleStatus,
     startTimesReady: startTimesReady,
-    counts: { players: players.length, divisions: divisions.length, finishedDivisions: res.divisions.length, scheduled: schedule.length },
+    horariosDesde: desdeCache || new Date().toISOString(),
+    matches: matches,
+    counts: { players: players.length, divisions: divisions.length, finishedDivisions: res.divisions.length, scheduled: schedule.length, matches: matches.length },
     updatedAt: new Date().toISOString()
   };
+}
+
+function leerPrevio(tid) {
+  try { return JSON.parse(fs.readFileSync(path.join(DATA, tid + '.json'), 'utf8')); }
+  catch (e) { return null; }
 }
 
 function aggregatePlayers(allData) {
@@ -297,7 +376,15 @@ function aggregatePlayers(allData) {
         writeIfChanged(f, T);
         byTid[tid] = T; scraped++;
         console.log(`  ↻ ${tid} · ${T.tournament.name} · jug ${T.counts.players} · div ${T.counts.divisions} · podios ${T.counts.finishedDivisions} · horarios ${T.counts.scheduled} (${T.scheduleStatus})`);
-      } catch (e) { console.error(`  ✗ ${tid}: ${e.message}`); if (cached) byTid[tid] = cached; }
+      } catch (e) {
+        console.error(`  ✗ ${tid}: ${e.message}`);
+        if (cached) byTid[tid] = cached;   // se conserva el archivo anterior tal cual
+        if (e instanceof FuenteBloqueada) {
+          console.error('  ⚠ r2sports bloqueó la IP. Se detiene la corrida y NO se toca ningún dato existente.');
+          console.error('    Reintentar más tarde, con menos frecuencia (RQ_PAUSA=2000).');
+          break;
+        }
+      }
     } else { byTid[tid] = cached; reused++; }
   }
 
