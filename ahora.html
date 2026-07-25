@@ -124,11 +124,13 @@
 <div class="wrap">
 
   <div class="me">
-    <label for="q">Mi jugador</label>
+    <label for="sel">Mi jugador</label>
     <div class="me-row">
-      <input type="search" id="q" list="jugadores" placeholder="Escribe tu nombre o apellido" autocomplete="off" enterkeyhint="done">
-      <datalist id="jugadores"></datalist>
-      <button id="clear" title="Quitar">Quitar</button>
+      <select id="sel"><option value="">Elige tu nombre de la lista…</option></select>
+      <button id="clear" title="Quitar" hidden>Quitar</button>
+    </div>
+    <div class="me-row" id="link-row" hidden style="margin-top:8px">
+      <button id="copiar" class="primary" style="flex:1">Copiar mi link</button>
     </div>
     <div class="note" id="me-note">Se guarda solo en este teléfono. Tus partidos quedan fijados arriba.</div>
   </div>
@@ -178,7 +180,12 @@ const $ = function (s) { return document.querySelector(s); };
 const el = function (t, c, h) { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
 const esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
 
-let T = null, MI = localStorage.getItem('rq.jugador') || '', FILTRO = 'todo', TODOS_RES = false;
+// MI es el UID del jugador, no su nombre: en r2sports hay homónimos reales
+// (Rodrigo Salgado Jr. es 96164 y su papá, Rodrigo Salgado I., es 626220),
+// así que buscar por texto mezclaba los partidos de dos personas distintas.
+let T = null, FILTRO = 'todo', TODOS_RES = false;
+let MI = new URLSearchParams(location.search).get('jugador') || localStorage.getItem('rq.uid') || '';
+if (MI) localStorage.setItem('rq.uid', MI);
 
 /* ---------- fechas ---------- */
 const DIAS = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -230,11 +237,16 @@ function faltan(d) {
 const PLACEHOLDER = /^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^\s*$/i;
 function esReal(n) { return !PLACEHOLDER.test(String(n || '')); }
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+function ladosDe(m) { return (m.lado1 || []).concat(m.lado2 || []); }
 function esMio(m) {
   if (!MI) return false;
-  const k = norm(MI);
-  return norm(m.p1).indexOf(k) >= 0 || norm(m.p2).indexOf(k) >= 0;
+  const l = ladosDe(m);
+  if (l.length) return l.some(function (x) { return x.uid === MI; });
+  // Datos viejos sin uid: se compara por nombre, avisando que puede fallar.
+  const p = miJugador();
+  return p ? (norm(m.p1).indexOf(norm(p.name)) >= 0 || norm(m.p2).indexOf(norm(p.name)) >= 0) : false;
 }
+function miJugador() { return ((T && T.players) || []).find(function (p) { return p.uid === MI; }) || null; }
 
 /* ---------- render de un partido ---------- */
 function cardPartido(m, opts) {
@@ -321,9 +333,19 @@ function pintar() {
   $('#estado').textContent = est;
   $('#dot').style.display = T.status === 'in-progress' ? '' : 'none';
 
-  // datalist de jugadores
-  const dl = $('#jugadores'); dl.innerHTML = '';
-  (T.players || []).forEach(function (p) { const o = el('option'); o.value = p.name; dl.appendChild(o); });
+  // selector de jugadores por uid, con ciudad para distinguir nombres parecidos
+  const sel = $('#sel');
+  if (sel.options.length <= 1) {
+    const orden = (T.players || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
+    orden.forEach(function (p) {
+      const o = el('option'); o.value = p.uid;
+      o.textContent = p.name + (p.place ? ' · ' + p.place : '');
+      sel.appendChild(o);
+    });
+  }
+  sel.value = MI || '';
+  $('#clear').hidden = !MI;
+  $('#link-row').hidden = !MI;
 
   const g = clasificar();
 
@@ -340,9 +362,11 @@ function pintar() {
   mios.sort(function (a, b) { return (fechaDe(a.day, a.time) || 8e15) - (fechaDe(b.day, b.time) || 8e15); });
   $('#s-mio').hidden = !MI;
   if (MI) {
+    const yo = miJugador();
     const box = $('#mio'); box.innerHTML = '';
-    $('#mio-n').textContent = MI;
-    if (!mios.length) box.appendChild(el('div', 'empty', 'No encontramos partidos por jugar con ese nombre. Revisa cómo está escrito en la lista.'));
+    $('#mio-n').textContent = yo ? yo.name + (yo.place ? ' · ' + yo.place : '') : '';
+    if (!yo) box.appendChild(el('div', 'empty', 'Ese jugador no está inscrito en este torneo.'));
+    else if (!mios.length) box.appendChild(el('div', 'empty', 'No te quedan partidos por jugar. Mira tus resultados más abajo.'));
     else mios.forEach(function (m) { box.appendChild(cardPartido(m, { live: g.live.indexOf(m) >= 0 })); });
   }
 
@@ -457,9 +481,26 @@ async function cargar() {
   $('#agenda').appendChild(el('div', 'warn', 'No pudimos cargar los datos. Revisa tu conexión y vuelve a intentar.'));
 }
 
-$('#q').value = MI;
-$('#q').addEventListener('change', function () { MI = this.value.trim(); localStorage.setItem('rq.jugador', MI); if (T) pintar(); });
-$('#clear').onclick = function () { MI = ''; $('#q').value = ''; localStorage.removeItem('rq.jugador'); if (T) pintar(); };
+$('#sel').addEventListener('change', function () {
+  MI = this.value;
+  if (MI) localStorage.setItem('rq.uid', MI); else localStorage.removeItem('rq.uid');
+  if (T) pintar();
+  window.scrollTo(0, 0);
+});
+$('#clear').onclick = function () { MI = ''; $('#sel').value = ''; localStorage.removeItem('rq.uid'); if (T) pintar(); };
+$('#copiar').onclick = async function () {
+  const url = location.origin + location.pathname + '?tid=' + TID + '&jugador=' + MI;
+  const yo = miJugador();
+  const b = this;
+  try {
+    if (navigator.share) { await navigator.share({ title: (yo ? yo.name : 'Mis partidos') + ' · Racquetball', url: url }); return; }
+    await navigator.clipboard.writeText(url);
+    b.textContent = 'Link copiado'; setTimeout(function () { b.textContent = 'Copiar mi link'; }, 2000);
+  } catch (e) {
+    b.textContent = 'Link copiado'; setTimeout(function () { b.textContent = 'Copiar mi link'; }, 2000);
+    prompt('Copia este link:', url);
+  }
+};
 $('#mas').onclick = function () { TODOS_RES = !TODOS_RES; pintar(); };
 
 cargar();

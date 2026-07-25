@@ -131,27 +131,62 @@ function needsScrape(cached) {
   return false;
 }
 
-// --- resolver nombres del bracket (a veces abreviados) a uid de la lista de inscritos ---
+// --- resolver nombres (r2sports los abrevia: "R Salgado Jr.") al uid del inscrito ---
+// El sufijo (Jr., I., II.) es parte de la identidad, NO ruido: borrarlo hacía que
+// "Rodrigo Salgado Jr." (uid 96164) y "Rodrigo Salgado I." (uid 626220), que son
+// hijo y padre, colapsaran en la misma clave. Además, ante duda no se adivina:
+// se devuelve sin uid y marcado como ambiguo.
+var SUFIJO = /^(jr|sr|ii|iii|iv|i|v)$/;
 function normName(s) {
   s = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[´`’]/g, "'");
-  s = s.replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, '');
   return s.replace(/[^a-z0-9/ ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-function lastTok(s) { var p = normName(s).split(' ').filter(Boolean); return p.length ? p[p.length - 1] : ''; }
-function lastInit(s) { var p = normName(s).split(' ').filter(Boolean); if (!p.length) return ''; return p[p.length - 1] + '|' + (p[0] ? p[0][0] : ''); }
-function buildNameIndex(players) {
-  var byFull = {}, byLI = {}, byLast = {};
-  players.forEach(function (p) {
-    byFull[normName(p.name)] = p;
-    var li = lastInit(p.name); if (li && !byLI[li]) byLI[li] = p;
-    var lt = lastTok(p.name); if (lt && !byLast[lt]) byLast[lt] = p;
-  });
-  return { byFull: byFull, byLI: byLI, byLast: byLast };
+function partesNombre(s) {
+  var toks = normName(s).split(' ').filter(Boolean), suf = '';
+  while (toks.length > 1 && SUFIJO.test(toks[toks.length - 1])) suf = toks.pop();
+  return { toks: toks, suf: suf };
 }
-function resolvePlayer(name, idx) {
-  var f = normName(name); if (idx.byFull[f]) return { uid: idx.byFull[f].uid, name: idx.byFull[f].name };
-  var li = lastInit(name); if (idx.byLI[li]) return { uid: idx.byLI[li].uid, name: idx.byLI[li].name };
-  var lt = lastTok(name); if (idx.byLast[lt]) return { uid: idx.byLast[lt].uid, name: idx.byLast[lt].name };
+function claveFull(s) { var p = partesNombre(s); return p.toks.join(' ') + (p.suf ? '#' + p.suf : ''); }
+function claveLI(s) {
+  var p = partesNombre(s); if (!p.toks.length) return '';
+  return p.toks[p.toks.length - 1] + '|' + p.toks[0][0] + (p.suf ? '#' + p.suf : '');
+}
+function claveLast(s) {
+  var p = partesNombre(s); if (!p.toks.length) return '';
+  return p.toks[p.toks.length - 1] + (p.suf ? '#' + p.suf : '');
+}
+var sinSuf = function (k) { return String(k || '').split('#')[0]; };
+function buildNameIndex(players) {
+  var byFull = {}, byLI = {}, byLast = {}, baFull = {}, baLI = {}, baLast = {};
+  function push(m, k, p) { if (!k) return; (m[k] = m[k] || []).push(p); }
+  players.forEach(function (p) {
+    push(byFull, claveFull(p.name), p);
+    push(byLI, claveLI(p.name), p);
+    push(byLast, claveLast(p.name), p);
+    // Mismas claves ignorando el sufijo: sirven para detectar que "Rodrigo Salgado"
+    // (sin Jr. ni I.) es ambiguo, en vez de darlo por no encontrado.
+    push(baFull, sinSuf(claveFull(p.name)), p);
+    push(baLI, sinSuf(claveLI(p.name)), p);
+    push(baLast, sinSuf(claveLast(p.name)), p);
+  });
+  return { byFull: byFull, byLI: byLI, byLast: byLast, baFull: baFull, baLI: baLI, baLast: baLast };
+}
+// permitidos: Set de uids a los que limitar la búsqueda (los inscritos de la división).
+function resolvePlayer(name, idx, permitidos) {
+  var filtra = function (arr) {
+    arr = arr || [];
+    if (!permitidos) return arr;
+    var dentro = arr.filter(function (p) { return permitidos.has(p.uid); });
+    return dentro.length ? dentro : [];
+  };
+  var intentos = [
+    filtra(idx.byFull[claveFull(name)]), filtra(idx.byLI[claveLI(name)]), filtra(idx.byLast[claveLast(name)]),
+    filtra(idx.baFull[sinSuf(claveFull(name))]), filtra(idx.baLI[sinSuf(claveLI(name))]), filtra(idx.baLast[sinSuf(claveLast(name))])
+  ];
+  for (var i = 0; i < intentos.length; i++) {
+    if (intentos[i].length === 1) return { uid: intentos[i][0].uid, name: intentos[i][0].name };
+    if (intentos[i].length > 1) return { uid: '', name: name, ambiguo: true };
+  }
   return { uid: '', name: name };
 }
 // Deriva resultados/medallas desde las llaves (cuando el resumen viewResults está vacío).
@@ -261,13 +296,34 @@ async function buildTournament(tid) {
   try {
     const sc = R2.parseMatchReport(await g(`${BASE}/tourneyDay/mediaMatchResults.asp?TID=${tid}&reportType=upcoming&resultsOption=byDiv&matchDate=all&playerSex=`));
     scheduleStatus = sc.status; startTimesReady = sc.startTimesReady || '';
+    // El reporte de horarios trae SOLO nombres. Se ligan a uid usando como universo
+    // los inscritos de esa misma división: así "Rodrigo Salgado Jr." no se confunde
+    // con su papá, y si el nombre igual queda dudoso se marca ambiguo en vez de mentir.
+    const idxN = buildNameIndex(players);
+    const uidsPorDiv = {};
+    players.forEach(function (p) {
+      (p.divisions || []).forEach(function (d) {
+        const k = d.divID + '_' + d.combinedID;
+        (uidsPorDiv[k] = uidsPorDiv[k] || new Set()).add(p.uid);
+      });
+    });
+    const ligar = function (nombre, permitidos) {
+      return String(nombre || '').split(' / ').map(function (x) { return x.trim(); }).filter(Boolean)
+        .map(function (uno) {
+          const r = resolvePlayer(uno, idxN, permitidos);
+          return { uid: r.uid || '', name: uno, ambiguo: !!r.ambiguo };
+        });
+    };
     (sc.divisions || []).forEach(function (d) {
+      const permitidos = uidsPorDiv[d.divID + '_' + d.combinedID];
       d.matches.forEach(function (m) {
+        const n1 = m.players[0] ? m.players[0].name : '', n2 = m.players[1] ? m.players[1].name : '';
         schedule.push({
           division: d.divisionEs, divisionRaw: d.division, drawType: d.drawType,
           divID: d.divID, combinedID: d.combinedID,
           round: m.round, day: m.day, time: m.time, court: m.court || '',
-          p1: m.players[0] ? m.players[0].name : '', p2: m.players[1] ? m.players[1].name : ''
+          p1: n1, p2: n2,
+          lado1: ligar(n1, permitidos), lado2: ligar(n2, permitidos)
         });
       });
     });
