@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-21">
+<html lang="es" data-v="2026-07-26-23">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -237,6 +237,12 @@
   .graf .tit b{font-size:15px;font-weight:800}
   .graf .tit span{margin-left:auto;font-size:12px;color:var(--ink-3)}
   .graf svg{width:100%;height:112px;display:block;overflow:visible}
+  .graf.puesto svg{height:132px}
+  .graf .delta{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--green-soft);color:var(--green-2)}
+  .graf .delta.baja{background:var(--signal-soft);color:var(--signal)}
+  .graf .delta.igual{background:#F1EFEA;color:var(--ink-3)}
+  .graf .puestos{font-size:11px;font-weight:800;fill:var(--green)}
+  .graf .fin{font-size:11.5px;font-weight:800;fill:var(--ink)}
   .graf .ejes{font-size:9.5px;fill:var(--ink-3);font-weight:600}
   .h2h{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-2);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left}
   .h2h:last-child{border-bottom:0}
@@ -393,9 +399,9 @@ function leerHash() {
 // Campeonatos salió de la barra: mostraba lo mismo que el inicio con menos
 // detalle. Se llega desde el botón del inicio y desde cualquier podio.
 const TABS = [
-  ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>'],
+  ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>'],
   ['ranking', 'Ranking', '<path d="M5 20V11M12 20V4M19 20v-7"/>'],
-  ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>']
+  ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>']
 ];
 function pintarTabs() {
   const c = $('#tabs'); c.innerHTML = '';
@@ -1357,9 +1363,11 @@ function vJugador(app) {
   if (conPuntos.length) {
     app.appendChild(el('h2', null, 'Evolución en el ranking'));
     conPuntos.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
+      const gp = graficoPuesto(r, j);
+      if (gp) app.appendChild(gp);
       app.appendChild(grafico(r));
     });
-    app.appendChild(el('div', 'nota', 'Puntos acumulados fecha a fecha, según el documento oficial de la Federación.'));
+    app.appendChild(el('div', 'nota', 'Los puntos son los del documento oficial de la Federación. El puesto fecha a fecha se calcula sumando esos mismos puntos hasta cada fecha, y el último coincide con el corte oficial.'));
   }
 
   // ---------- por jugar ----------
@@ -1417,6 +1425,85 @@ function vJugador(app) {
     app.appendChild(el('div', 'nota', HIST ? 'Todavía no tenemos partidos de este jugador en r2sports.' : 'Cargando su carrera…'));
   }
 }
+// Cómo se movió el PUESTO fecha a fecha. La Federación publica un solo corte, así
+// que la posición intermedia se calcula sumando sus puntos oficiales hasta cada
+// fecha y ordenando la categoría completa con el mismo criterio de desempate. El
+// último punto coincide con el puesto oficial, que es la prueba de que calza.
+function evolucionPuesto(r, j) {
+  const C = ((RK && RK.categorias) || []).find(function (c) { return c.key === r.key; });
+  if (!C || !C.fechas || C.fechas.length < 2) return null;
+  const yo = norm(j.nombre);
+  const soyYo = function (p) {
+    const n = norm(p.nombre);
+    return n === yo || (j.alias || []).some(function (a) { return norm(a) === n; });
+  };
+  if (!C.jugadores.some(soyYo)) return null;
+  const salida = [];
+  C.fechas.forEach(function (f, i) {
+    const tabla = C.jugadores.map(function (p) {
+      let pts = 0, jug = 0;
+      (p.fechas || []).slice(0, i + 1).forEach(function (x) { pts += (x.pts || 0); if (x.pts) jug++; });
+      return { nombre: p.nombre, pts: pts, jug: jug, yo: soyYo(p) };
+    }).filter(function (p) { return p.pts > 0; })
+      .sort(function (a, b) { return (b.pts - a.pts) || (a.jug - b.jug) || a.nombre.localeCompare(b.nombre, 'es'); });
+    const idx = tabla.findIndex(function (p) { return p.yo; });
+    salida.push({ nombre: f.nombre, puesto: idx < 0 ? null : idx + 1, de: tabla.length });
+  });
+  return salida.filter(function (x, i) { return x.puesto || salida.slice(i).some(function (y) { return y.puesto; }); });
+}
+// Seis etiquetas no caben con el nombre completo de la ciudad: "6ª La Serena"
+// quedaba cortada en "6ª La". Se usan los códigos que ya usa la Federación.
+const CIUDAD_CORTA = {
+  santiago: 'SCL', temuco: 'TEM', rancagua: 'RAN', 'viña del mar': 'VDM',
+  'vina del mar': 'VDM', 'la serena': 'LSE', concepcion: 'CCP', 'concepción': 'CCP',
+  machali: 'MCH', valparaiso: 'VAP', 'valparaíso': 'VAP'
+};
+function fechaCorta(nombre) {
+  const m = String(nombre || '').match(/^(\d+ª)\s*(.*)$/);
+  if (!m) return String(nombre || '').slice(0, 9);
+  const ciudad = m[2].trim();
+  const cod = CIUDAD_CORTA[ciudad.toLowerCase()] ||
+    (/nacional/i.test(ciudad) ? 'NAC' : ciudad.slice(0, 3).toUpperCase());
+  return m[1] + ' ' + cod;
+}
+function graficoPuesto(r, j) {
+  const ev = evolucionPuesto(r, j);
+  if (!ev) return null;
+  const conDato = ev.filter(function (x) { return x.puesto; });
+  if (conDato.length < 2) return null;
+
+  const caja = el('div', 'graf puesto');
+  const tit = el('div', 'tit');
+  tit.appendChild(el('b', null, esc(nombreCat(r.categoria)) + ': cómo se movió'));
+  const ini = conDato[0].puesto, fin = conDato[conDato.length - 1].puesto;
+  const dif = ini - fin;
+  tit.appendChild(el('span', 'delta' + (dif > 0 ? '' : dif < 0 ? ' baja' : ' igual'), dif > 0 ? '↑ subió ' + dif : dif < 0 ? '↓ bajó ' + (-dif) : 'se mantuvo'));
+  caja.appendChild(tit);
+
+  const W = 300, H = 92, pad = 16;
+  const peor = Math.max.apply(null, conDato.map(function (x) { return x.puesto; }));
+  const mejor = Math.min.apply(null, conDato.map(function (x) { return x.puesto; }));
+  const rango = Math.max(1, peor - mejor);
+  const x = function (i) { return pad + i * (W - pad * 2) / (ev.length - 1); };
+  // Eje invertido: el 1 va arriba, que es como se lee un ranking.
+  const y = function (p) { return pad + ((p - mejor) / rango) * (H - pad * 2); };
+  const pts = ev.map(function (e, i) { return { i: i, e: e }; }).filter(function (o) { return o.e.puesto; });
+  const linea = pts.map(function (o, k) { return (k ? 'L' : 'M') + x(o.i).toFixed(1) + ' ' + y(o.e.puesto).toFixed(1); }).join(' ');
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 22) + '" role="img" aria-label="Puesto fecha a fecha en ' + esc(nombreCat(r.categoria)) + '">';
+  svg += '<path d="' + linea + '" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+  pts.forEach(function (o, k) {
+    const ultimo = k === pts.length - 1;
+    svg += '<circle cx="' + x(o.i).toFixed(1) + '" cy="' + y(o.e.puesto).toFixed(1) + '" r="' + (ultimo ? 6 : 4) + '" fill="' + (ultimo ? 'var(--green)' : '#fff') + '" stroke="var(--green)" stroke-width="2.2"/>';
+    svg += '<text class="' + (ultimo ? 'fin' : 'puestos') + '" x="' + x(o.i).toFixed(1) + '" y="' + (y(o.e.puesto) - 11).toFixed(1) + '" text-anchor="middle">' + o.e.puesto + 'º</text>';
+  });
+  ev.forEach(function (e, i) {
+    svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (H + 14) + '" text-anchor="' + (i === 0 ? 'start' : i === ev.length - 1 ? 'end' : 'middle') + '">' + esc(fechaCorta(e.nombre)) + '</text>';
+  });
+  svg += '</svg>';
+  caja.appendChild(el('div', null, svg));
+  caja.appendChild(el('div', 'nota', 'Terminó ' + fin + 'º de ' + conDato[conDato.length - 1].de + ' con puntos, que es el puesto del corte oficial.'));
+  return caja;
+}
 // Línea de puntos acumulados por fecha. SVG a mano: son seis puntos, no hace
 // falta traer una librería de gráficos.
 function grafico(r) {
@@ -1441,10 +1528,7 @@ function grafico(r) {
   puntos.forEach(function (p, i) {
     svg += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.acum).toFixed(1) + '" r="' + (p.pts ? 3.2 : 2) + '" fill="' + (p.pts ? 'var(--green)' : 'var(--ink-3)') + '"/>';
     if (p.pts) svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (y(p.acum) - 7).toFixed(1) + '" text-anchor="middle">+' + p.pts + '</text>';
-    // "1ª Santiago" y "2ª Santiago" son fechas distintas: si se borra el ordinal
-    // el eje queda con dos etiquetas iguales.
-    const corta = String(p.nombre).replace(/^(\d+ª)\s*(\S+).*$/, '$1 $2').slice(0, 9);
-    svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (H + 10) + '" text-anchor="' + (i === 0 ? 'start' : i === puntos.length - 1 ? 'end' : 'middle') + '">' + esc(corta) + '</text>';
+    svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (H + 10) + '" text-anchor="' + (i === 0 ? 'start' : i === puntos.length - 1 ? 'end' : 'middle') + '">' + esc(fechaCorta(p.nombre)) + '</text>';
   });
   svg += '</svg>';
   caja.appendChild(el('div', null, svg));
