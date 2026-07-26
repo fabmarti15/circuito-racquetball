@@ -134,10 +134,57 @@ function noUnir(a, b) {
   });
 }
 
+// ---------- 0. medallas, recontadas a mano ----------
+// El índice viejo contaba como podio cualquier división con puestos, incluidas las
+// consolaciones ("Por puestos"), así que ganar el cuadro de consolación daba un oro.
+// Y en algunas divisiones el resumen de r2sports mete cuartofinalistas en la
+// columna de semifinalistas: en Dobles Open 2026 aparecían 8 bronces, que son
+// cuatro parejas, imposible en una llave. Regla: bronce = perder en semifinales,
+// o sea 2 personas en singles y 4 en dobles; si hay más, esa división no aporta
+// bronces porque no sabemos quiénes son.
+function esConsolacion(nombre) {
+  return /por puestos|consolation|consolaci|playoff|repechaje|#\d+/i.test(String(nombre || ''));
+}
+function contarMedallas() {
+  const porUidM = {}, titulosPorUid = {};
+  const sumar = function (uid, tipo) {
+    const m = porUidM[uid] || (porUidM[uid] = { gold: 0, silver: 0, bronze: 0 });
+    m[tipo]++;
+  };
+  fs.readdirSync(DATA).filter(function (f) { return /^\d+\.json$/.test(f); }).forEach(function (f) {
+    const T = leer(f, null);
+    if (!T || !T.results) return;
+    (T.results.divisions || []).forEach(function (d) {
+      const nombre = d.nameEs || d.name || '';
+      if (esConsolacion(nombre)) return;                     // la consolación no es podio
+      const pl = d.placements || [];
+      const bronces = pl.filter(function (p) { return p.rank === 3 || p.rank === 4; });
+      const cuantos = bronces.reduce(function (a, p) { return a + (p.players || []).length; }, 0);
+      const dobles = /dobles|doubles/i.test(nombre);
+      const bronceConfiable = cuantos <= (dobles ? 4 : 2);
+      pl.forEach(function (p) {
+        const tipo = p.rank === 1 ? 'gold' : p.rank === 2 ? 'silver' : (p.rank === 3 || p.rank === 4) ? 'bronze' : null;
+        if (!tipo) return;
+        if (tipo === 'bronze' && !bronceConfiable) return;
+        (p.players || []).forEach(function (x) {
+          if (!x.uid) return;
+          const uid = uidReal(x.uid);
+          sumar(uid, tipo);
+          (titulosPorUid[uid] = titulosPorUid[uid] || []).push({
+            tid: T.tid, year: T.year, categoria: nombre, puesto: p.rank, label: p.label
+          });
+        });
+      });
+    });
+  });
+  return { medallas: porUidM, titulos: titulosPorUid };
+}
+
 // ---------- 1. jugadores de r2sports (los que tienen UID) ----------
 const r2 = leer('jugadores.json', { players: {} }).players || {};
 const porUid = {};
 const uidReal = function (u) { return FUSIONAR_UID[String(u)] || String(u); };
+const RECUENTO = contarMedallas();
 Object.keys(r2).forEach(function (uidBruto) {
   const uid = uidReal(uidBruto);
   const p = r2[uidBruto];
@@ -149,12 +196,10 @@ Object.keys(r2).forEach(function (uidBruto) {
   }
   porUid[uid] = {
     id: 'r2:' + uid, uid: uid, nombre: p.name, ciudades: p.place ? [p.place] : [],
-    alias: [p.name], enR2: true, ranking: [], medallas: p.medals || null,
-    // Los títulos con su torneo: sirven para contar CUÁNDO ganó cada medalla, no
-    // solo cuántas tiene.
-    titulos: (p.titles || []).map(function (t) {
-      return { tid: t.tid, year: t.year, categoria: t.category, puesto: t.rank, label: t.label };
-    }),
+    alias: [p.name], enR2: true, ranking: [],
+    medallas: RECUENTO.medallas[uid] || { gold: 0, silver: 0, bronze: 0 },
+    // Los títulos con su torneo: sirven para contar CUÁNDO ganó cada medalla.
+    titulos: RECUENTO.titulos[uid] || [],
     torneos: (p.tournaments || []).length
   };
 });
