@@ -107,6 +107,35 @@
   .li.top{background:var(--oro-soft)}
   .cards{display:grid;grid-template-columns:1fr;gap:9px;margin-top:8px}
   @media (min-width:560px){ .cards{grid-template-columns:1fr 1fr} }
+
+  /* tablero de la portada: cuadros de distinto tamaño, el grande es lo que importa */
+  .tablero{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  .t2{grid-column:span 2}
+  .tile{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .tile:hover{border-color:var(--green-2)}
+  .tile .rot{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:var(--ink-3);margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .tile .cifra{font-size:30px;font-weight:800;letter-spacing:-.035em;line-height:1}
+  .tile .pie{font-size:12px;color:var(--ink-3);margin-top:4px}
+  .tile.viva{background:var(--signal-soft);border-color:#F3D9CB}
+  .tile.viva .rot{color:var(--signal)}
+  .tile.viva .punto{width:7px;height:7px;border-radius:50%;background:var(--signal);animation:lat 1.8s infinite}
+  .tile.verde{background:var(--green-soft);border-color:#D8E7E0}
+  .tile.verde .rot{color:var(--green-2)}
+  .duelo{font-size:19px;font-weight:700;letter-spacing:-.015em;line-height:1.32}
+  .duelo em{font-style:normal;color:var(--ink-3);font-weight:600}
+  .duelo-pie{font-size:12px;color:var(--ink-3);margin:1px 0 0}
+  .duelo + .duelo{margin-top:9px}
+  .hora-gr{display:grid;grid-template-columns:58px 1fr;gap:12px;align-items:baseline}
+  .hora-gr b{font-size:25px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  .podio{display:flex;align-items:baseline;gap:9px;padding:5px 0;font-size:15px}
+  .podio + .podio{border-top:1px solid var(--line-2)}
+  .podio i{font-style:normal;width:15px;font-size:12.5px;font-weight:800;color:var(--ink-3);flex:none}
+  .podio b{font-weight:600}
+  .podio span{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;color:var(--ink-2)}
+  .podio.uno i{color:var(--oro)}
+  .podio.uno b{font-weight:800}
+  .mini{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:4px 0}
+  .mini span{color:var(--ink-3);white-space:nowrap}
   .card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px}
   .card:hover{border-color:var(--green-2)}
   .card .t{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-3)}
@@ -329,6 +358,12 @@ function catalogo() {
 }
 function torneoActivo() { return catalogo().find(function (x) { return x.estado === 'in-progress'; }) || null; }
 function ultimoJugado() { return catalogo().find(function (x) { return x.estado === 'finished'; }) || catalogo()[0] || null; }
+// Para la portada: la fecha más reciente que SÍ tenga podios publicados. Si el
+// último torneo terminó pero la Federación no cargó nada, mostrar su tarjeta vacía
+// deja la portada con cara de error.
+function ultimaConPodios() {
+  return catalogo().find(function (x) { return x.estado === 'finished' && ((x.counts || {}).finishedDivisions || 0) > 0; }) || ultimoJugado();
+}
 
 /* ---------- piezas ---------- */
 function nodoJugadores(lista, textoPlano, extra) {
@@ -433,62 +468,133 @@ function buscador(placeholder, onPick) {
   return cont;
 }
 
-/* ================= INICIO ================= */
+/* ================= INICIO: tablero ================= */
+function tile(clase, rotulo, contenido, alClic, conPunto) {
+  const t = el(alClic ? 'button' : 'div', 'tile ' + (clase || ''));
+  const r = el('div', 'rot');
+  if (conPunto) r.appendChild(el('span', 'punto'));
+  r.appendChild(el('span', null, esc(rotulo)));
+  t.appendChild(r);
+  t.appendChild(contenido);
+  if (alClic) t.onclick = alClic;
+  return t;
+}
+function duelo(m, conHora) {
+  const box = el('div');
+  const d = el('div', 'duelo');
+  d.appendChild(nodoJugadores(m.lado1, m.p1));
+  d.appendChild(el('em', null, ' vs '));
+  d.appendChild(nodoJugadores(m.lado2, m.p2));
+  box.appendChild(d);
+  const f = fechaDe(m.day, m.time);
+  box.appendChild(el('div', 'duelo-pie', (conHora && f ? hhmm(f) + ' · ' : '') + esc(String(m.round || '').toLowerCase() + ' ' + m.division)));
+  return box;
+}
 function vInicio(app) {
   const activo = torneoActivo();
-  app.appendChild(el('h1', null, activo ? 'Hay torneo jugándose' : 'Circuito Nacional'));
-  app.appendChild(el('div', 'sub', activo
-    ? nombreCorto(activo.name, activo.startDate) + ' · ' + rangoEs(activo.startDate, activo.endDate)
-    : 'Ranking oficial, campeonatos y jugadores del racquetball chileno.'));
-  app.appendChild(buscador('Busca un jugador', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
+  const tab = el('div', 'tablero');
 
   if (activo && T && String(T.tid) === String(activo.tid)) {
     const g = clasificar(T);
+    const jugados = (T.matches || []).length;
+
     if (g.live.length) {
-      app.appendChild(el('h2', null, 'En cancha ahora'));
-      g.live.forEach(function (m) { app.appendChild(filaPartido(m, { live: true })); });
-      app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo. "En cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
-    }
-    app.appendChild(el('h2', null, 'Próximos partidos'));
-    if (!g.next.length) app.appendChild(el('div', 'vacio', 'No queda nada por jugar.'));
-    g.next.slice(0, 5).forEach(function (m) { app.appendChild(filaPartido(m)); });
-    if (g.next.length > 5) {
-      const b = el('button', 'btn', 'Ver los ' + g.next.length + ' partidos');
-      b.style.marginTop = '10px';
-      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid }); };
-      app.appendChild(b);
-    }
-  } else {
-    // Sin torneo: la página sigue teniendo sentido.
-    if (RK) {
-      app.appendChild(el('h2', null, 'Líderes del ranking'));
-      const cards = el('div', 'cards');
-      RK.categorias.slice().sort(function (a, b) { return b.conPuntos - a.conPuntos; }).slice(0, 4).forEach(function (c) {
-        cards.appendChild(tarjetaCategoria(c));
-      });
-      app.appendChild(cards);
-      const b = el('button', 'btn', 'Ver las 10 categorías'); b.style.marginTop = '10px';
-      b.onclick = function () { ir({ vista: 'ranking' }); };
-      app.appendChild(b);
-    }
-    const ult = ultimoJugado();
-    if (ult) {
-      app.appendChild(el('h2', null, 'Campeones de la última fecha'));
-      app.appendChild(el('div', 'sub', nombreCorto(ult.name, ult.startDate) + ' · ' + rangoEs(ult.startDate, ult.endDate)));
       const box = el('div');
-      box.appendChild(el('div', 'nota', 'Cargando…'));
-      app.appendChild(box);
-      cargarTorneo(ult.tid).then(function (t) {
-        box.innerHTML = '';
-        const pods = podios(t);
-        if (!pods.length) { box.appendChild(el('div', 'vacio', 'Esa fecha todavía no tiene resultados publicados.')); return; }
-        box.appendChild(listaPodios(pods.slice(0, 6), t));
-        const b2 = el('button', 'btn', 'Ver la fecha completa'); b2.style.marginTop = '10px';
-        b2.onclick = function () { ir({ vista: 'campeonato', tid: ult.tid }); };
-        box.appendChild(b2);
-      });
+      g.live.slice(0, 3).forEach(function (m) { box.appendChild(duelo(m, true)); });
+      if (g.live.length > 3) box.appendChild(el('div', 'duelo-pie', 'y ' + (g.live.length - 3) + ' más'));
+      tab.appendChild(tile('viva t2', 'En cancha · ' + g.live.length + (g.live.length === 1 ? ' partido' : ' partidos'), box,
+        function () { ir({ vista: 'campeonato', tid: T.tid }); }, true));
     }
+    if (g.next.length) {
+      const m = g.next[0], f = fechaDe(m.day, m.time);
+      const box = el('div', 'hora-gr');
+      box.appendChild(el('b', null, f ? hhmm(f) : '—'));
+      box.appendChild(duelo(m, false));
+      const falta = f ? faltan(f) : null;
+      tab.appendChild(tile(g.live.length ? 't2' : 'verde t2', 'Siguiente' + (falta ? ' · ' + falta : ''), box,
+        function () { ir({ vista: 'campeonato', tid: T.tid }); }));
+    }
+    const c1 = el('div');
+    c1.appendChild(el('div', 'cifra', String(g.next.length)));
+    c1.appendChild(el('div', 'pie', 'ver la agenda'));
+    tab.appendChild(tile('', 'Por jugar', c1, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
+
+    const c2 = el('div');
+    c2.appendChild(el('div', 'cifra', String(jugados)));
+    c2.appendChild(el('div', 'pie', 'ver resultados'));
+    tab.appendChild(tile('', 'Ya jugados', c2, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
+
+    if (jugados) {
+      const box = el('div');
+      (T.matches || []).slice(0, 3).forEach(function (m) {
+        const gs = m.games || [];
+        const sg = gs.filter(function (x) { return x.w > x.l; }).length, sp = gs.filter(function (x) { return x.l > x.w; }).length;
+        const f = el('div', 'mini');
+        const izq = el('span'); izq.appendChild(nodoJugadores([m.ganador || {}], (m.ganador || {}).name || '—'));
+        izq.appendChild(document.createTextNode(' a '));
+        izq.appendChild(nodoJugadores([m.perdedor || {}], (m.perdedor || {}).name || '—'));
+        f.appendChild(izq);
+        f.appendChild(el('span', null, gs.length ? sg + '-' + sp : (m.forfeit ? 'W.O.' : '')));
+        box.appendChild(f);
+      });
+      tab.appendChild(tile('t2', 'Últimos resultados', box, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
+    }
+    app.appendChild(tab);
+    app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo: "en cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
+    return;
   }
+
+  // ---- sin torneo: manda el ranking oficial ----
+  if (RK) {
+    ['Singles Open', 'Singles Damas'].forEach(function (label, i) {
+      const C = RK.categorias.find(function (c) { return c.label === label; });
+      if (!C) return;
+      const box = el('div');
+      C.jugadores.slice(0, 3).forEach(function (p, k) {
+        const f = el('div', 'podio' + (k === 0 ? ' uno' : ''));
+        f.appendChild(el('i', null, (k + 1) + 'º'));
+        const b = el('b'); b.appendChild(nodoJugadores([{ uid: (porNombre(p.nombre) || {}).uid, name: p.nombre }], p.nombre));
+        f.appendChild(b);
+        f.appendChild(el('span', null, String(p.pts)));
+        box.appendChild(f);
+      });
+      tab.appendChild(tile((i === 0 ? 'verde ' : '') + 't2', label + ' · ranking oficial', box,
+        function () { ir({ vista: 'ranking', cat: C.key }); }));
+    });
+    const c0 = el('div');
+    c0.appendChild(el('div', 'cifra', String(RK.categorias.length)));
+    c0.appendChild(el('div', 'pie', 'ver todo el ranking'));
+    tab.appendChild(tile('', 'Categorías', c0, function () { ir({ vista: 'ranking' }); }));
+  }
+  const cj = el('div');
+  cj.appendChild(el('div', 'cifra', String(jugadores().length || '—')));
+  cj.appendChild(el('div', 'pie', 'buscar a alguien'));
+  tab.appendChild(tile('', 'Jugadores', cj, function () { ir({ vista: 'jugadores' }); }));
+
+  const ult = ultimaConPodios();
+  if (ult) {
+    const box = el('div');
+    box.appendChild(el('div', 'pie', 'Cargando…'));
+    const t = tile('t2', 'Campeones de la última fecha · ' + nombreCorto(ult.name, ult.startDate), box,
+      function () { ir({ vista: 'campeonato', tid: ult.tid }); });
+    tab.appendChild(t);
+    cargarTorneo(ult.tid).then(function (tt) {
+      box.innerHTML = '';
+      const pods = podios(tt).slice(0, 4);
+      if (!pods.length) { box.appendChild(el('div', 'pie', 'Esa fecha todavía no tiene resultados publicados.')); return; }
+      pods.forEach(function (d) {
+        const campeon = (d.placements || []).find(function (p) { return p.rank === 1; });
+        if (!campeon) return;
+        const f = el('div', 'mini');
+        const izq = el('span'); izq.appendChild(nodoJugadores(campeon.players, ''));
+        f.appendChild(izq);
+        f.appendChild(el('span', null, esc(d.nameEs || d.name)));
+        box.appendChild(f);
+      });
+      if (((tt.results || {}).derived)) box.appendChild(el('div', 'pie', 'Deducido de las llaves: la Federación no publicó el resumen.'));
+    });
+  }
+  app.appendChild(tab);
 }
 function clasificar(t) {
   const now = Date.now(), live = [], next = [], sin = [];
