@@ -1,0 +1,48 @@
+name: Histórico por jugador
+# Recorre la carrera de cada jugador en r2sports (mem_appPlayerMatchStats) para
+# completar el histórico y descubrir torneos que no están en el catálogo.
+#
+# Corre acá y no en un computador de la casa por una razón concreta: r2sports
+# bloquea por IP con pocas decenas de pedidos seguidos. En el runner la IP es de
+# GitHub, el crawl va con pausa larga y, si igual bloquea, el script se reanuda
+# solo en la corrida siguiente porque guarda caché por jugador.
+on:
+  workflow_dispatch:
+    inputs:
+      forzar:
+        description: 'Ignorar la caché y volver a bajar todos los jugadores'
+        type: boolean
+        default: false
+  schedule:
+    # Lunes 06:00 UTC (madrugada en Chile), fuera de horario de torneo.
+    - cron: '0 6 * * 1'
+permissions:
+  contents: write
+concurrency:
+  group: historico
+  cancel-in-progress: false
+jobs:
+  historico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Recorrer carreras
+        env:
+          RQ_PAUSA: '3000'        # 3 s entre pedidos: r2sports bloquea si se apura
+          RQ_CACHE_DIAS: '7'
+        run: node generar-historico.js ${{ inputs.forzar && '--forzar' || '' }} || true
+      - name: Commit si cambió
+        run: |
+          if ! git diff --quiet -- data; then
+            git config user.name "circuito-bot"
+            git config user.email "bot@users.noreply.github.com"
+            git add data
+            git commit -m "Actualizar histórico por jugador $(date -u +%FT%TZ)"
+            git push
+          else
+            echo "Sin cambios"
+          fi

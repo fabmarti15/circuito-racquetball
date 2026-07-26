@@ -365,9 +365,60 @@
     return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return a.order - b.order; });
   }
 
+  // ---------- CARRERA COMPLETA DE UN JUGADOR ----------
+  // mem_appPlayerMatchStats.asp?UID=X devuelve TODOS los partidos del jugador en
+  // r2sports, de cualquier torneo y país. Es la única fuente que permite recuperar
+  // el histórico sin conocer de antemano la lista de torneos: cada TID que aparece
+  // aquí es un torneo que se puede sumar al catálogo.
+  // Ojo: el nombre del torneo y el tipo de cuadro NO vienen en el HTML (la página
+  // los rellena con JavaScript desde una tabla aparte), solo viene el TID.
+  function parseCareer(html) {
+    const h = String(html || '');
+    // No se puede cortar por <tr>: la celda de jugadores trae una tabla anidada y
+    // partiría cada partido en pedazos. Se corta por el enlace al cuadro, que
+    // aparece una vez por partido.
+    const re = /app_draw\.asp\?TID=(\d+)&(?:amp;)?divID=(\d+)&(?:amp;)?combinedID=(\d+)/gi;
+    const inicios = [];
+    let mm;
+    while ((mm = re.exec(h)) !== null) inicios.push({ idx: mm.index, tid: mm[1], divID: mm[2], combinedID: mm[3] });
+    const out = [];
+    inicios.forEach(function (ini, k) {
+      const fin = inicios[k + 1] ? inicios[k + 1].idx : h.length;
+      const fila = h.slice(ini.idx, Math.min(fin, ini.idx + 3000));
+      const draw = [null, ini.tid, ini.divID, ini.combinedID];
+      const jug = [];
+      const reJ = /R2UID=(\d+)"[^>]*>\s*([^<]+?)\s*<\/a>\s*<\/b>\s*(?:<br\s*\/?>\s*([^<]*))?/gi;
+      let j;
+      while ((j = reJ.exec(fila)) !== null) {
+        jug.push({ uid: j[1], name: clean(j[2]), loc: clean(j[3] || '') });
+      }
+      if (jug.length < 2) return;
+      const cells = tdCells(fila).map(function (c) { return clean(c); });
+      let fecha = '', marcador = '', ronda = '';
+      cells.forEach(function (c) {
+        if (!fecha && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(c)) fecha = c;
+        else if (!marcador && (/^\d+-\d+(,\s*\d+-\d+)*$/.test(c) || /^WBF|^W\/O|No Show|Forfeit/i.test(c))) marcador = c;
+        else if (!ronda && /^\(?(rnd|round|semis?|qtrs?|final|\d)/i.test(c) && c.length < 24 && !/^\d{1,2}\/\d/.test(c)) ronda = c;
+      });
+      const sc = parseScoreText(marcador);
+      // En estas tablas el orden es "A Def. B": el primero es el ganador.
+      const dobles = jug.length > 2;
+      out.push({
+        tid: draw[1], divID: draw[2], combinedID: draw[3],
+        round: ronda.replace(/^\(|\)$/g, '').trim(),
+        date: fecha,
+        ganador: dobles ? [jug[0], jug[1]] : [jug[0]],
+        perdedor: dobles ? [jug[2], jug[3]].filter(Boolean) : [jug[1]],
+        marcador: marcador, games: sc.games, forfeit: sc.forfeit
+      });
+    });
+    return out;
+  }
+
   return {
     decodeEntities: decodeEntities,
     strip: strip,
+    parseCareer: parseCareer,
     traducirCategoria: traducirCategoria,
     categoriaBase: categoriaBase,
     nivelCuadro: nivelCuadro,
