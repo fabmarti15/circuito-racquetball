@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-12">
+<html lang="es" data-v="2026-07-26-14">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -703,8 +703,8 @@ function vCampeonatos(app) {
     if (t.year !== anio) { anio = t.year; app.appendChild(el('h2', null, anio)); }
     const b = el('button', 'card');
     b.appendChild(el('div', 't', t.estado === 'in-progress' ? 'jugándose ahora' : t.estado === 'upcoming' ? 'por comenzar' : (t.venue || '').split('-')[0].trim()));
-    b.appendChild(el('div', 'n', esc(nombreCorto(t.name, t.startDate))));
-    b.appendChild(el('div', 'd', rangoEs(t.startDate, t.endDate) + ' · ' + ((t.counts && t.counts.players) || 0) + ' jugadores'));
+    b.appendChild(el('div', 'n', esc(tituloFecha(t))));
+    b.appendChild(el('div', 'd', [ciudadDe(t.venue), rangoEs(t.startDate, t.endDate), ((t.counts && t.counts.players) || 0) + ' jugadores'].filter(Boolean).join(' · ')));
     b.onclick = function () { ir({ vista: 'campeonato', tid: t.tid }); };
     const cont = el('div', 'cards'); cont.appendChild(b);
     app.appendChild(cont);
@@ -715,8 +715,8 @@ function vCampeonatos(app) {
 function vCampeonato(app) {
   if (!T || String(T.tid) !== String(RUTA.tid)) { app.appendChild(el('div', 'nota', 'Cargando la fecha…')); return; }
   const t = T.tournament || {};
-  app.appendChild(el('h1', null, nombreCorto(t.name, t.startDate)));
-  app.appendChild(el('div', 'sub', [rangoEs(t.startDate, t.endDate), (t.venue || '').split('-')[0].trim()].filter(Boolean).join(' · ')));
+  app.appendChild(el('h1', null, tituloFecha(t)));
+  app.appendChild(el('div', 'sub', [ciudadDe(t.venue), rangoEs(t.startDate, t.endDate), t.name].filter(Boolean).join(' · ')));
 
   if (RUTA.cat) return llaveCategoria(app, RUTA.cat);
 
@@ -1382,8 +1382,12 @@ async function json(url) {
 // título equivocado: la Segunda Fecha mostraba los campeones del Nacional Junior.
 async function cargarTorneo(tid, forzar) {
   if (!tid) return null;
-  const fresco = cache[tid] && (Date.now() - (cacheHora[tid] || 0) < VENCE_MS);
-  if (fresco && !forzar) return cache[tid];
+  // Una fecha terminada no vuelve a cambiar: se guarda para siempre en memoria.
+  // Solo el torneo en curso vence, para ver los resultados nuevos.
+  const guardado = cache[tid];
+  const enCurso = guardado && estadoDe({ startDate: (guardado.tournament || {}).startDate, endDate: (guardado.tournament || {}).endDate, counts: guardado.counts }) === 'in-progress';
+  const fresco = guardado && (!enCurso || Date.now() - (cacheHora[tid] || 0) < VENCE_MS);
+  if (fresco && !forzar) return guardado;
   if (window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid)) { cache[tid] = window.RQ_DATA; return cache[tid]; }
   const j = await json('./data/' + tid + '.json');
   if (j && j.tournament && String(j.tid) === String(tid)) { cache[tid] = j; cacheHora[tid] = Date.now(); return j; }
@@ -1435,6 +1439,18 @@ async function arrancar() {
   const [hi, no] = await Promise.all([json('./data/historico.json'), json('./data/torneos-nombres.json')]);
   HIST = hi; TNOM = no;
   pintar();
+  precargarFechas();
+}
+// Con la pantalla ya dibujada, se bajan calladas el resto de las fechas (unos
+// 700 KB entre todas) para que abrir un campeonato viejo sea instantáneo y no
+// muestre "cargando". De a una, para no pelear con lo que el usuario esté viendo.
+async function precargarFechas() {
+  if (window.RQ_TORNEOS || window.RQ_DATA) return;
+  const pendientes = catalogo().map(function (t) { return t.tid; }).filter(function (tid) { return !cache[tid]; });
+  for (const tid of pendientes) {
+    await new Promise(function (r) { setTimeout(r, 400); });
+    await cargarTorneo(tid);
+  }
 }
 
 window.addEventListener('popstate', function () { RUTA = leerHash(); RONDA = 0; CUADRO = false; if (RUTA.tid) abrirTorneo(RUTA.tid).then(pintar); else pintar(); });
