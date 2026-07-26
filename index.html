@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-17">
+<html lang="es" data-v="2026-07-26-19">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -870,27 +870,54 @@ function faseQueDefine(cat) {
 function podioDe(cat) {
   const f = faseQueDefine(cat);
   if (!f || !f.jugados.length) return null;
-  const conOrden = f.jugados.map(function (m) { return { m: m, o: ronda(m.round).orden }; });
-  const max = Math.max.apply(null, conOrden.map(function (x) { return x.o; }));
-  const final = conOrden.filter(function (x) { return x.o === max; }).map(function (x) { return x.m; })[0];
+
+  // Se ordenan las rondas de la fase que define. La última con partidos jugados es
+  // la final; la anterior son las semifinales. Hace falta deducirlo así porque en
+  // doble eliminación r2sports no rotula "Semis" sino "Rnd 3", "Rnd 5".
+  const porRonda = {};
+  f.jugados.forEach(function (m) {
+    const r = ronda(m.round);
+    (porRonda[r.nombre] = porRonda[r.nombre] || { orden: r.orden, ms: [] }).ms.push(m);
+  });
+  // La "Final extra" (el Final If de la doble eliminación) solo cuenta si se jugó.
+  const conReales = Object.keys(porRonda).filter(function (n) {
+    return porRonda[n].ms.some(function (m) { return esReal((m.ganador || {}).name) && esReal((m.perdedor || {}).name); });
+  });
+  // Sin ronda "Final" (doble eliminación), la numerada más alta es la final y debe
+  // pesar más que un partido de definición de puestos.
+  if (!conReales.some(function (n) { return /^Final/.test(n); })) {
+    const num = conReales.filter(function (n) { return /^Fecha \d+$/.test(n); })
+      .sort(function (a, b) { return porRonda[b].orden - porRonda[a].orden; })[0];
+    if (num) porRonda[num].orden = 100;
+  }
+  const nombres = conReales.sort(function (a, b) { return porRonda[b].orden - porRonda[a].orden; });
+  if (!nombres.length) return null;
+
+  const rondaFinal = porRonda[nombres[0]];
+  const final = rondaFinal.ms.filter(function (m) { return esReal((m.ganador || {}).name); })[0];
   if (!final) return null;
-  const semis = f.jugados.filter(function (m) { return ronda(m.round).nombre === 'Semifinales'; })
-    .map(function (m) { return m.perdedor; }).filter(Boolean);
-  // El partido por el tercer lugar puede venir rotulado "3rd" o "4th" según el
-  // torneo, y en cualquiera de las fases. En el Nacional Junior el "3rd" era un
-  // cruce fantasma con nombres en blanco y el bueno estaba en "4th".
-  const esTercerLugar = function (m) {
+
+  // Semifinalistas: los perdedores de la ronda inmediatamente anterior. Si esa
+  // ronda tiene más de dos partidos no era la semifinal, así que no se muestra.
+  let semis = [];
+  const rondaSemis = nombres[1] ? porRonda[nombres[1]] : null;
+  if (rondaSemis && rondaSemis.ms.length <= 2) {
+    semis = rondaSemis.ms.map(function (m) { return m.perdedor; })
+      .filter(function (x) { return x && esReal(x.name); });
+  }
+  // Tercero y cuarto solo si el partido por el tercer lugar es de ESTA fase: en el
+  // Nacional Junior había uno en el repechaje entre dos jugadores que no eran los
+  // semifinalistas, y lo mostraba como podio.
+  const t3 = rondaFinal.ms.concat(rondaSemis ? rondaSemis.ms : []).filter(function (m) {
     const n = ronda(m.round).nombre;
-    return (n === '3er lugar' || n === '4º lugar') &&
-      esReal((m.ganador || {}).name) && esReal((m.perdedor || {}).name);
-  };
-  const todos = Object.keys(cat.fases).reduce(function (a, k) { return a.concat(cat.fases[k].jugados); }, []);
-  let t3 = f.jugados.filter(esTercerLugar)[0] || todos.filter(esTercerLugar)[0] || null;
+    return (n === '3er lugar' || n === '4º lugar') && esReal((m.ganador || {}).name) && esReal((m.perdedor || {}).name);
+  })[0] || null;
+
   return {
     fase: f.nombre, definePorPlayoff: esFaseSecundaria(f.nombre),
     campeon: final.ganador, segundo: final.perdedor, marcador: final.marcador,
-    semis: semis, tercero: t3 ? t3.ganador : null, cuarto: t3 ? t3.perdedor : null,
-    pendiente: !!f.pendientes.length
+    semis: t3 ? [] : semis, tercero: t3 ? t3.ganador : null, cuarto: t3 ? t3.perdedor : null,
+    pendiente: pendientesReales({ schedule: f.pendientes }) > 0
   };
 }
 // Dos fuentes posibles de podio:
@@ -990,7 +1017,7 @@ function bloquePodio(cat, alClic) {
 /* ---------- llaves: ronda por ronda, como ATP ---------- */
 const ORDEN_RONDA = [
   [/^final$/i, 'Final', 100], [/final if|if necessary/i, 'Final extra', 99],
-  [/3rd|third|tercer/i, '3er lugar', 96], [/4th|cuarto lugar/i, '4º lugar', 95],
+  [/3rd|third|tercer/i, 'Definición de puestos', 96], [/4th|cuarto lugar/i, 'Definición de puestos', 95],
   [/semi/i, 'Semifinales', 90], [/qtr|quarter/i, 'Cuartos', 80]
 ];
 function ronda(label) {
@@ -1027,9 +1054,29 @@ function llaveCategoria(app, nombre) {
   }
 
   const grupos = {};
-  C.jugados.forEach(function (m) { const r = ronda(m.round); (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).jugados.push(m); });
-  C.pendientes.forEach(function (m) { const r = ronda(m.round); (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).pend.push(m); });
-  const nombres = Object.keys(grupos).sort(function (a, b) { return grupos[b].orden - grupos[a].orden; });
+  // Cruces de relleno fuera: r2sports deja listado el "Final If" que no se jugó y
+  // partidos con los nombres en blanco, y eso ensuciaba el cuadro.
+  const sirve = function (m, jugado) {
+    if (jugado) return esReal((m.ganador || {}).name) || esReal((m.perdedor || {}).name);
+    return (m.day && m.time) || (esReal(m.p1) && esReal(m.p2));
+  };
+  C.jugados.filter(function (m) { return sirve(m, true); }).forEach(function (m) { const r = ronda(m.round); (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).jugados.push(m); });
+  C.pendientes.filter(function (m) { return sirve(m, false); }).forEach(function (m) { const r = ronda(m.round); (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).pend.push(m); });
+  // En doble eliminación no hay ronda llamada "Final": la última es "Rnd 5". Sin
+  // esto la navegación abría en el partido de definición de puestos en vez de la
+  // final, porque mi tabla de rondas lo ordenaba más arriba.
+  if (!Object.keys(grupos).some(function (n) { return /^Final/.test(n); })) {
+    const numeradas = Object.keys(grupos).filter(function (n) { return /^Fecha \d+$/.test(n); })
+      .sort(function (a, b) { return grupos[b].orden - grupos[a].orden; });
+    if (numeradas.length) {
+      const ult = numeradas[0];
+      grupos['Final'] = grupos[ult];
+      grupos['Final'].orden = 100;
+      delete grupos[ult];
+    }
+  }
+  const nombres = Object.keys(grupos).filter(function (n) { return grupos[n].jugados.length || grupos[n].pend.length; })
+    .sort(function (a, b) { return grupos[b].orden - grupos[a].orden; });
   if (!nombres.length) { app.appendChild(el('div', 'vacio', 'Sin partidos en esta categoría.')); return; }
   if (RONDA >= nombres.length) RONDA = 0;
 
@@ -1206,6 +1253,7 @@ function vJugador(app) {
     const gan = carrera.filter(function (p) { return p.gane; }).length;
     let racha = 0, signo = null;
     for (const p of carrera) { if (signo === null) { signo = p.gane; racha = 1; } else if (p.gane === signo) racha++; else break; }
+    const completo = !HIST || !HIST.uids || HIST.uids.indexOf(String(j.uid)) >= 0;
     const kp = el('div', 'kpis');
     [[gan + '-' + (carrera.length - gan), 'ganados y perdidos', ''],
      [Math.round(gan / carrera.length * 100) + '%', 'victorias', gan / carrera.length >= 0.5 ? 'buena' : 'mala'],
@@ -1217,6 +1265,9 @@ function vJugador(app) {
         kp.appendChild(d);
       });
     app.appendChild(kp);
+    if (!completo) {
+      app.appendChild(el('div', 'aviso', 'Historial incompleto: de este jugador todavía no bajamos su carrera entera, así que acá solo están los partidos que aparecieron en la de otros. El número real puede ser distinto.'));
+    }
 
     // ---------- mejor victoria: el rival mejor rankeado al que le ganó ----------
     let mejor = null;

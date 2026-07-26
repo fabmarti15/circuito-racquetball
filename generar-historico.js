@@ -160,9 +160,15 @@ function clavePartido(m) {
   });
   const partidos = Object.keys(vistos).map(function (k) { return vistos[k]; })
     .sort(function (a, b) { return (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0); });
+  // Quiénes tienen su carrera bajada de verdad. Sin esta lista, la web no puede
+  // distinguir un récord completo de uno armado con los partidos que aparecieron
+  // de rebote en la carrera de otro, que sale sesgado.
+  const uidsLeidos = fs.readdirSync(CARRERAS).filter(function (f) { return /^\d+\.json$/.test(f); })
+    .map(function (f) { return f.replace('.json', ''); });
   escribir(path.join(DATA, 'historico.json'), {
     updatedAt: new Date().toISOString(),
     jugadoresLeidos: archivos,
+    uids: uidsLeidos,
     partidos: partidos
   });
 
