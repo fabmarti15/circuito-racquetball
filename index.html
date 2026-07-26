@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-06">
+<html lang="es" data-v="2026-07-26-08">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -507,12 +507,13 @@ function duelo(m, conHora) {
 }
 function vInicio(app) {
   const activo = torneoActivo();
-  const tab = el('div', 'tablero');
+  const enCurso = activo && T && String(T.tid) === String(activo.tid);
+  const g = enCurso ? clasificar(T) : null;
 
-  if (activo && T && String(T.tid) === String(activo.tid)) {
-    const g = clasificar(T);
-    const jugados = (T.matches || []).length;
-
+  // Los cuadros del torneo y la explicación del marcador solo cuando hay algo
+  // pasando: con el torneo cerrado no aportan nada.
+  if (g && (g.live.length || g.next.length)) {
+    const tab = el('div', 'tablero');
     if (g.live.length) {
       const box = el('div');
       g.live.slice(0, 3).forEach(function (m) { box.appendChild(duelo(m, true)); });
@@ -528,100 +529,51 @@ function vInicio(app) {
       const falta = f ? faltan(f) : null;
       tab.appendChild(tile(g.live.length ? 't2' : 'verde t2', 'Siguiente' + (falta ? ' · ' + falta : ''), box,
         function () { ir({ vista: 'campeonato', tid: T.tid }); }));
-    } else if (!g.live.length && jugados) {
-      // El torneo está dentro de sus fechas pero ya no queda nada por jugar: en vez
-      // de dejar la portada flaca, el cuadro grande pasa a ser el último partido.
-      const fin = (T.matches || [])[0];
-      const box = el('div');
-      if (fin) box.appendChild(duelo({
-        lado1: [fin.ganador || {}], lado2: [fin.perdedor || {}],
-        p1: (fin.ganador || {}).name, p2: (fin.perdedor || {}).name,
-        division: fin.division, round: fin.round, day: '', time: ''
-      }, false));
-      if (fin && fin.marcador) box.appendChild(el('div', 'duelo-pie', esc(fin.marcador)));
-      tab.appendChild(tile('verde t2', 'Se jugó todo lo programado', box,
-        function () { ir({ vista: 'campeonato', tid: T.tid }); }));
     }
     const c1 = el('div');
     c1.appendChild(el('div', 'cifra', String(g.next.length)));
     c1.appendChild(el('div', 'pie', 'ver la agenda'));
     tab.appendChild(tile('', 'Por jugar', c1, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
-
     const c2 = el('div');
-    c2.appendChild(el('div', 'cifra', String(jugados)));
+    c2.appendChild(el('div', 'cifra', String((T.matches || []).length)));
     c2.appendChild(el('div', 'pie', 'ver resultados'));
     tab.appendChild(tile('', 'Ya jugados', c2, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
-
-    if (jugados) {
-      const box = el('div');
-      (T.matches || []).slice(0, 3).forEach(function (m) {
-        const gs = m.games || [];
-        const sg = gs.filter(function (x) { return x.w > x.l; }).length, sp = gs.filter(function (x) { return x.l > x.w; }).length;
-        const f = el('div', 'mini');
-        const izq = el('span'); izq.appendChild(nodoJugadores([m.ganador || {}], (m.ganador || {}).name || '—'));
-        izq.appendChild(document.createTextNode(' a '));
-        izq.appendChild(nodoJugadores([m.perdedor || {}], (m.perdedor || {}).name || '—'));
-        f.appendChild(izq);
-        f.appendChild(el('span', null, gs.length ? sg + '-' + sp : (m.forfeit ? 'W.O.' : '')));
-        box.appendChild(f);
-      });
-      tab.appendChild(tile('t2', 'Últimos resultados', box, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
-    }
     app.appendChild(tab);
-    app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo: "en cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
-    return;
+    if (g.live.length) app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo: "en cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
   }
 
-  // ---- sin torneo: manda el ranking oficial ----
-  if (RK) {
-    ['Singles Open', 'Singles Damas'].forEach(function (label, i) {
-      const C = RK.categorias.find(function (c) { return c.label === label; });
-      if (!C) return;
-      const box = el('div');
-      C.jugadores.slice(0, 3).forEach(function (p, k) {
-        const f = el('div', 'podio' + (k === 0 ? ' uno' : ''));
-        f.appendChild(el('i', null, (k + 1) + 'º'));
-        const b = el('b'); b.appendChild(nodoJugadores([{ uid: (porNombre(p.nombre) || {}).uid, name: p.nombre }], p.nombre));
-        f.appendChild(b);
-        f.appendChild(el('span', null, String(p.pts)));
-        box.appendChild(f);
+  // ---- lo que de verdad importa: las últimas fechas con sus podios ----
+  const fechas = catalogo().filter(function (t) { return t.estado !== 'upcoming'; }).slice(0, 3);
+  if (!fechas.length) { app.appendChild(el('div', 'vacio', 'Todavía no hay fechas cargadas.')); return; }
+  fechas.forEach(function (meta, i) {
+    const h = el('h2');
+    h.style.cursor = 'pointer';
+    h.textContent = nombreCorto(meta.name, meta.startDate) + ' · ' + rangoEs(meta.startDate, meta.endDate);
+    h.onclick = function () { ir({ vista: 'campeonato', tid: meta.tid }); };
+    app.appendChild(h);
+    const caja = el('div');
+    caja.appendChild(el('div', 'nota', 'Cargando…'));
+    app.appendChild(caja);
+    cargarTorneo(meta.tid).then(function (t) {
+      caja.innerHTML = '';
+      if (!t) { caja.appendChild(el('div', 'nota', 'No pudimos leer esta fecha.')); return; }
+      const pods = podiosUnificados(t);
+      if (!pods.length) {
+        caja.appendChild(el('div', 'vacio', meta.estado === 'in-progress' ? 'Todavía en juego' : 'Esta fecha no tiene resultados publicados.'));
+        return;
+      }
+      pods.forEach(function (p) {
+        caja.appendChild(bloquePodioSimple(p, function () {
+          ir(p.conLlave ? { vista: 'campeonato', tid: meta.tid, cat: p.cat } : { vista: 'campeonato', tid: meta.tid });
+        }));
       });
-      tab.appendChild(tile((i === 0 ? 'verde ' : '') + 't2', label + ' · ranking oficial', box,
-        function () { ir({ vista: 'ranking', cat: C.key }); }));
+      if (((t.results || {}).derived)) caja.appendChild(el('div', 'nota', 'La Federación no publicó el resumen de esta fecha: estos podios salen de las llaves.'));
     });
-    const c0 = el('div');
-    c0.appendChild(el('div', 'cifra', String(RK.categorias.length)));
-    c0.appendChild(el('div', 'pie', 'ver todo el ranking'));
-    tab.appendChild(tile('', 'Categorías', c0, function () { ir({ vista: 'ranking' }); }));
-  }
-  const cj = el('div');
-  cj.appendChild(el('div', 'cifra', String(jugadores().length || '—')));
-  cj.appendChild(el('div', 'pie', 'buscar a alguien'));
-  tab.appendChild(tile('', 'Jugadores', cj, function () { ir({ vista: 'jugadores' }); }));
-
-  const ult = ultimaConPodios();
-  if (ult) {
-    const box = el('div');
-    box.appendChild(el('div', 'pie', 'Cargando…'));
-    const t = tile('t2', 'Campeones de la última fecha · ' + nombreCorto(ult.name, ult.startDate), box,
-      function () { ir({ vista: 'campeonato', tid: ult.tid }); });
-    tab.appendChild(t);
-    cargarTorneo(ult.tid).then(function (tt) {
-      box.innerHTML = '';
-      const cats = categoriasDelTorneo(tt).filter(function (c) { return podioDe(c); });
-      if (!cats.length) { box.appendChild(el('div', 'pie', 'Esa fecha todavía no tiene resultados publicados.')); return; }
-      cats.slice(0, 3).forEach(function (c) {
-        const p = podioDe(c);
-        const f = el('div', 'mini');
-        const izq = el('span'); izq.appendChild(nodoJugadores([p.campeon], (p.campeon || {}).name || '—'));
-        f.appendChild(izq);
-        f.appendChild(el('span', null, esc(c.nombre)));
-        box.appendChild(f);
-      });
-      if (cats.length > 3) box.appendChild(el('div', 'pie', 'y ' + (cats.length - 3) + ' categorías más'));
-    });
-  }
-  app.appendChild(tab);
+  });
+  const b = el('button', 'btn', 'Ver todos los campeonatos');
+  b.style.marginTop = '14px';
+  b.onclick = function () { ir({ vista: 'campeonatos' }); };
+  app.appendChild(b);
 }
 function clasificar(t) {
   const now = Date.now(), live = [], next = [], sin = [];
@@ -701,11 +653,6 @@ function vCampeonato(app) {
   if (RUTA.cat) return llaveCategoria(app, RUTA.cat);
 
   const g = clasificar(T);
-  const pods = podios(T);
-  if (pods.length) {
-    app.appendChild(el('h2', null, 'Podios'));
-    app.appendChild(listaPodios(pods, T));
-  }
   if (g.live.length || g.next.length) {
     app.appendChild(el('h2', null, 'Agenda'));
     const dias = [];
@@ -738,12 +685,15 @@ function vCampeonato(app) {
     });
   }
 
-  const cats = categoriasDelTorneo(T);
+  const pods = podiosUnificados(T);
   app.appendChild(el('h2', null, 'Resultados por categoría'));
-  if (!cats.length) app.appendChild(el('div', 'vacio', 'Todavía no hay partidos publicados.'));
-  else cats.forEach(function (c) {
-    app.appendChild(bloquePodio(c, function () { ir({ vista: 'campeonato', tid: T.tid, cat: c.nombre }); }));
+  if (!pods.length) app.appendChild(el('div', 'vacio', 'Esta fecha todavía no tiene resultados publicados.'));
+  else pods.forEach(function (p) {
+    app.appendChild(bloquePodioSimple(p, p.conLlave ? function () { ir({ vista: 'campeonato', tid: T.tid, cat: p.cat }); } : null));
   });
+  if (!(T.matches || []).length && pods.length) {
+    app.appendChild(el('div', 'nota', 'De esta fecha tenemos el resumen oficial pero no el detalle partido por partido, así que no hay llaves para abrir.'));
+  }
 }
 // r2sports parte una categoría en varias "divisiones": los grupos del round robin,
 // el playoff y la consolación. Son fases de lo mismo, no categorías distintas, y
@@ -756,13 +706,25 @@ function baseCategoria(n) {
     .replace(/\s+#\d+$/, '')
     .trim();
 }
+// Nombre de división para mostrar: r2sports escribe "Singles Varones: Open".
+// Se saca el "Singles" (que es lo normal) y los dos puntos.
+function nombreDiv(n) {
+  return String(n || '')
+    .replace(/^Singles\s+/i, '')
+    .replace(/^Dobles\s+/i, 'Dobles ')
+    .replace(/:\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 function esFaseGrupo(nombre) { return /\b(grupo|group)\s*\d+/i.test(nombre); }
 function esFaseSecundaria(nombre) { return /por puestos|repechaje|consolaci/i.test(nombre); }
 // Orden de importancia para mostrar las categorías.
+// Ojo con el orden de las reglas: "Dobles Varones Open" también calza con la
+// regla de varones, así que dobles tiene que evaluarse primero.
 const PESO_CAT = [
-  [/varones.*open|men'?s singles.*open/i, 10], [/damas.*open|women/i, 20],
-  [/dobles/i, 30], [/juveniles a/i, 40], [/juveniles b/i, 50], [/juveniles c/i, 60],
-  [/juvenil|junior/i, 70], [/multibote/i, 80], [/novicios|inicial/i, 90]
+  [/dobles|doubles/i, 30], [/varones.*open|men'?s singles.*open/i, 10],
+  [/damas.*open|women/i, 20], [/juveniles a/i, 40], [/juveniles b/i, 50],
+  [/juveniles c/i, 60], [/juvenil|junior/i, 70], [/multibote/i, 80], [/novicios|inicial/i, 90]
 ];
 function pesoCategoria(n) {
   for (const p of PESO_CAT) if (p[0].test(n)) return p[1];
@@ -818,11 +780,71 @@ function podioDe(cat) {
     pendiente: !!f.pendientes.length
   };
 }
+// Dos fuentes posibles de podio:
+//  - Torneos bajados con el modulo nuevo: se calcula desde los partidos y da
+//    campeon, segundo Y semifinalistas.
+//  - Fechas viejas: solo existe el resumen de r2sports, con sus puestos.
+// Se normalizan las dos a la misma forma para que la portada no distinga.
+function podiosUnificados(t) {
+  if (!t) return [];
+  if ((t.matches || []).length) {
+    return categoriasDelTorneo(t).map(function (c) {
+      const p = podioDe(c);
+      if (!p) return null;
+      return { nombre: nombreDiv(c.nombre), campeon: p.campeon, segundo: p.segundo, semis: p.semis,
+        tercero: p.tercero, cuarto: p.cuarto, marcador: p.marcador, cat: c.nombre, conLlave: true };
+    }).filter(Boolean);
+  }
+  return (((t.results || {}).divisions) || []).map(function (d) {
+    const nombre = nombreDiv(d.nameEs || d.name);
+    // La consolación no es el podio de la categoría: se omite.
+    if (esFaseSecundaria(nombre) || /#\d+$/.test(nombre)) return null;
+    const pl = d.placements || [];
+    const uno = pl.find(function (x) { return x.rank === 1; });
+    const dos = pl.find(function (x) { return x.rank === 2; });
+    if (!uno) return null;
+    const junta = function (x) {
+      return x ? { name: (x.players || []).map(function (y) { return y.name; }).join(' / '), uid: (x.players || [])[0] && x.players[0].uid } : null;
+    };
+    const esDobles = /dobles/i.test(nombre) || ((uno.players || []).length > 1);
+    // En dobles el resumen de r2sports lista a los semifinalistas como personas
+    // sueltas, sin decir quién jugaba con quién: mejor no mostrar nada que mentir.
+    const semis = esDobles ? [] : pl.filter(function (x) { return x.rank === 3 || x.rank === 4; })
+      .reduce(function (a, x) { return a.concat(x.players || []); }, []).slice(0, 2);
+    return { nombre: nombre, campeon: junta(uno), segundo: junta(dos), semis: semis, conLlave: false, sinSemis: esDobles };
+  }).filter(Boolean).sort(function (a, b) {
+    return pesoCategoria(a.nombre) - pesoCategoria(b.nombre) || a.nombre.localeCompare(b.nombre, 'es');
+  });
+}
+function bloquePodioSimple(p, alClic) {
+  const box = el(alClic ? 'button' : 'div', 'catbox');
+  const cab = el('div', 'catbox-cab');
+  cab.appendChild(el('b', null, esc(p.nombre)));
+  if (alClic) cab.appendChild(el('span', null, p.conLlave ? 'ver la llave ›' : 'ver la fecha ›'));
+  box.appendChild(cab);
+  const fila = function (etq, lista, extra) {
+    const arr = (lista || []).filter(function (x) { return x && x.name; });
+    if (!arr.length) return;
+    const f = el('div', 'pod-fila');
+    f.appendChild(el('i', null, esc(etq)));
+    const b = el('b');
+    arr.forEach(function (j, i) { if (i) b.appendChild(document.createTextNode(', ')); b.appendChild(nodoJugadores([j], j.name)); });
+    f.appendChild(b);
+    if (extra) f.appendChild(el('span', null, esc(extra)));
+    box.appendChild(f);
+  };
+  fila('Campeón', [p.campeon], p.marcador || '');
+  fila('Segundo', [p.segundo]);
+  if (p.tercero) { fila('Tercero', [p.tercero]); fila('Cuarto', [p.cuarto]); }
+  else fila((p.semis || []).length === 1 ? 'Semifinalista' : 'Semifinalistas', p.semis);
+  if (alClic) box.onclick = alClic;
+  return box;
+}
 function bloquePodio(cat, alClic) {
   const p = podioDe(cat);
   const box = el('div', 'catbox');
   const cab = el('div', 'catbox-cab');
-  cab.appendChild(el('b', null, esc(cat.nombre)));
+  cab.appendChild(el('b', null, esc(nombreDiv(cat.nombre))));
   if (alClic) cab.appendChild(el('span', null, 'ver más ›'));
   box.appendChild(cab);
   if (!p) {
