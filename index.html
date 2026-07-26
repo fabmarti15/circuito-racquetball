@@ -513,6 +513,19 @@ function vInicio(app) {
       const falta = f ? faltan(f) : null;
       tab.appendChild(tile(g.live.length ? 't2' : 'verde t2', 'Siguiente' + (falta ? ' · ' + falta : ''), box,
         function () { ir({ vista: 'campeonato', tid: T.tid }); }));
+    } else if (!g.live.length && jugados) {
+      // El torneo está dentro de sus fechas pero ya no queda nada por jugar: en vez
+      // de dejar la portada flaca, el cuadro grande pasa a ser el último partido.
+      const fin = (T.matches || [])[0];
+      const box = el('div');
+      if (fin) box.appendChild(duelo({
+        lado1: [fin.ganador || {}], lado2: [fin.perdedor || {}],
+        p1: (fin.ganador || {}).name, p2: (fin.perdedor || {}).name,
+        division: fin.division, round: fin.round, day: '', time: ''
+      }, false));
+      if (fin && fin.marcador) box.appendChild(el('div', 'duelo-pie', esc(fin.marcador)));
+      tab.appendChild(tile('verde t2', 'Se jugó todo lo programado', box,
+        function () { ir({ vista: 'campeonato', tid: T.tid }); }));
     }
     const c1 = el('div');
     c1.appendChild(el('div', 'cifra', String(g.next.length)));
