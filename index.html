@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-14">
+<html lang="es" data-v="2026-07-26-16">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -199,6 +199,46 @@
   table.pos td:first-child{text-align:left;font-weight:600}
   table.pos tr:last-child td{border-bottom:0}
 
+  /* perfil con color */
+  .p-hero{border-radius:18px;padding:16px;background:var(--green-soft);margin-top:16px}
+  .p-hero.oro{background:#FBF3E2}
+  .p-hero .arriba{display:flex;gap:14px;align-items:center}
+  .p-hero .foto{width:76px;height:76px;border-radius:50%;object-fit:cover;background:#fff;flex:none}
+  .p-hero .ini{width:76px;height:76px;border-radius:50%;background:#fff;color:var(--green);display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:800;flex:none}
+  .p-hero h3{margin:0;font-size:23px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+  .p-hero .donde{font-size:13px;color:var(--ink-2);margin-top:3px}
+  .p-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .p-chip{background:#fff;border-radius:99px;padding:6px 11px;font-size:13px;font-weight:700;color:var(--ink);display:inline-flex;gap:6px;align-items:baseline;border:0}
+  .p-chip i{font-style:normal;font-weight:800;color:var(--green-2)}
+  .p-chip.oro i{color:var(--oro)}
+  .p-chip small{font-size:11.5px;color:var(--ink-3);font-weight:600}
+  .medallas{display:flex;gap:12px;margin-top:12px;font-size:14px;font-weight:700;color:var(--ink-2)}
+  .medallas span{display:inline-flex;gap:5px;align-items:center}
+  .forma{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+  .forma button{width:27px;height:27px;border-radius:8px;border:0;font-size:12px;font-weight:800;color:#fff;background:var(--green-2);padding:0}
+  .forma button.p{background:#C2410C}
+  .forma button:disabled{opacity:.45}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px}
+  .kpi b{display:block;font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .kpi span{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+  .kpi.buena b{color:var(--green-2)}
+  .kpi.mala b{color:var(--signal)}
+  .graf{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px;margin-bottom:9px}
+  .graf .tit{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+  .graf .tit b{font-size:15px;font-weight:800}
+  .graf .tit span{margin-left:auto;font-size:12px;color:var(--ink-3)}
+  .graf svg{width:100%;height:112px;display:block;overflow:visible}
+  .graf .ejes{font-size:9.5px;fill:var(--ink-3);font-weight:600}
+  .h2h{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-2);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left}
+  .h2h:last-child{border-bottom:0}
+  .h2h .nm{font-size:15px;font-weight:600;flex:1;min-width:0}
+  .h2h .barra{width:96px;height:8px;border-radius:99px;background:var(--signal-soft);overflow:hidden;flex:none}
+  .h2h .barra i{display:block;height:100%;background:var(--green-2)}
+  .h2h .cifra{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink-2);width:44px;text-align:right;flex:none}
+  .destacado{background:var(--green-soft);border-radius:var(--radius);padding:12px 13px;margin-top:10px;font-size:14.5px}
+  .destacado b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--green-2);margin-bottom:3px}
+
   /* perfil */
   .ficha{display:flex;gap:13px;align-items:center;margin:16px 0 4px}
   .ficha .foto{width:66px;height:66px;border-radius:50%;object-fit:cover;background:var(--green-soft);flex:none}
@@ -345,9 +385,9 @@ function leerHash() {
 // Campeonatos salió de la barra: mostraba lo mismo que el inicio con menos
 // detalle. Se llega desde el botón del inicio y desde cualquier podio.
 const TABS = [
-  ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>'],
   ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>'],
-  ['ranking', 'Ranking', '<path d="M5 20V11M12 20V4M19 20v-7"/>']
+  ['ranking', 'Ranking', '<path d="M5 20V11M12 20V4M19 20v-7"/>'],
+  ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>']
 ];
 function pintarTabs() {
   const c = $('#tabs'); c.innerHTML = '';
@@ -1108,112 +1148,160 @@ function vJugadores(app) {
 function vJugador(app) {
   const j = jugadores().find(function (x) { return x.uid === RUTA.uid || x.id === RUTA.uid; });
   if (!j) { app.appendChild(el('div', 'vacio', 'No encontramos a ese jugador.')); return; }
+  const carrera = carreraDe(j);
+  const mejorPuesto = j.ranking.slice().sort(function (a, b) { return a.puesto - b.puesto; })[0];
 
-  const cab = el('div', 'ficha');
+  // ---------- cabecera con color ----------
+  const hero = el('div', 'p-hero' + (mejorPuesto && mejorPuesto.puesto === 1 ? ' oro' : ''));
+  const arriba = el('div', 'arriba');
   const url = foto(j);
   if (url) {
     const img = el('img', 'foto'); img.src = url; img.alt = '';
-    img.onerror = function () { const i = el('div', 'ini', esc(iniciales(j.nombre))); img.replaceWith(i); };
-    cab.appendChild(img);
-  } else cab.appendChild(el('div', 'ini', esc(iniciales(j.nombre))));
-  const txt = el('div');
-  txt.appendChild(el('h3', null, esc(j.nombre)));
-  txt.appendChild(el('div', 'sub', esc(j.ciudad || 'sin ciudad registrada') + (j.alias.length > 1 ? ' · también aparece como ' + esc(j.alias.filter(function (a) { return a !== j.nombre; }).join(', ')) : '')));
-  cab.appendChild(txt);
-  app.appendChild(cab);
+    img.onerror = function () { img.replaceWith(el('div', 'ini', esc(iniciales(j.nombre)))); };
+    arriba.appendChild(img);
+  } else arriba.appendChild(el('div', 'ini', esc(iniciales(j.nombre))));
+  const datos = el('div');
+  datos.appendChild(el('h3', null, esc(j.nombre)));
+  datos.appendChild(el('div', 'donde', esc(j.ciudad || 'sin ciudad registrada')));
+  arriba.appendChild(datos);
+  hero.appendChild(arriba);
 
-  // récord y racha, de la carrera completa
-  const carrera = carreraDe(j);
-  if (carrera.length) {
-    const gan = carrera.filter(function (m) { return m.gane; }).length;
-    let racha = 0, signo = null;
-    for (const m of carrera) {
-      if (signo === null) { signo = m.gane; racha = 1; }
-      else if (m.gane === signo) racha++;
-      else break;
-    }
-    const k = el('div', 'kpis');
-    [[gan + '-' + (carrera.length - gan), 'ganados-perdidos'],
-     [Math.round(gan / carrera.length * 100) + '%', 'victorias'],
-     [(signo ? '+' : '−') + racha, signo ? 'ganados seguidos' : 'perdidos seguidos']].forEach(function (par) {
-      const d = el('div', 'kpi');
-      d.appendChild(el('b', null, esc(par[0])));
-      d.appendChild(el('span', null, esc(par[1])));
-      k.appendChild(d);
-    });
-    app.appendChild(k);
-  }
-
-  // ranking oficial por categoría, con desglose por fecha
-  if (j.ranking && j.ranking.length) {
-    app.appendChild(el('h2', null, 'Ranking oficial' + (RK && RK.corte ? ' · ' + RK.corte.etiqueta : '')));
+  if (j.ranking.length) {
+    const chips = el('div', 'p-chips');
     j.ranking.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
-      const c = el('div', 'card'); c.style.marginBottom = '9px';
-      c.appendChild(el('div', 't', esc(nombreCat(r.categoria))));
-      c.appendChild(el('div', 'n', r.puesto + 'º' + (r.empatado ? ' =' : '') + ' · ' + r.pts + ' puntos'));
-      c.appendChild(el('div', 'd', r.jugadas + (r.jugadas === 1 ? ' fecha jugada' : ' fechas jugadas') + (r.def ? ' · defiende ' + r.def : '')));
-      const conPts = (r.fechas || []).filter(function (f) { return f.pts != null; });
-      if (conPts.length) {
-        const max = Math.max.apply(null, conPts.map(function (f) { return f.pts || 0; })) || 1;
-        const barras = el('div', 'barras');
-        conPts.forEach(function (f) {
-          const d = el('div');
-          d.style.height = Math.max(3, Math.round((f.pts || 0) / max * 100)) + '%';
-          if (f.pts) d.style.background = 'var(--green)';
-          d.innerHTML = '<b>' + (f.pts || 0) + '</b><i>' + esc(f.nombre) + '</i>';
-          barras.appendChild(d);
-        });
-        c.appendChild(barras);
-        c.appendChild(el('div', 'barras-pie'));
-      }
-      app.appendChild(c);
+      const c = el('button', 'p-chip' + (r.puesto === 1 ? ' oro' : ''));
+      c.innerHTML = '<i>' + r.puesto + 'º</i>' + esc(nombreCat(r.categoria)) + '<small>' + r.pts + ' pts</small>';
+      c.onclick = function () { ir({ vista: 'ranking', cat: r.key }); };
+      chips.appendChild(c);
     });
+    hero.appendChild(chips);
+  }
+  const m = j.medallas || { gold: 0, silver: 0, bronze: 0 };
+  if (m.gold || m.silver || m.bronze) {
+    const md = el('div', 'medallas');
+    md.innerHTML = '<span>🥇 ' + m.gold + '</span><span>🥈 ' + m.silver + '</span><span>🥉 ' + m.bronze + '</span>' +
+      (j.torneos ? '<span style="margin-left:auto;color:var(--ink-3);font-weight:600">' + j.torneos + ' fechas jugadas</span>' : '');
+    hero.appendChild(md);
+  }
+  app.appendChild(hero);
+
+  // ---------- forma reciente ----------
+  if (carrera.length) {
+    app.appendChild(el('h2', null, 'Últimos partidos'));
+    const forma = el('div', 'forma');
+    carrera.slice(0, 12).reverse().forEach(function (p) {
+      const b = el('button', p.gane ? '' : 'p', p.gane ? 'G' : 'P');
+      b.title = (p.gane ? 'Ganó a ' : 'Perdió con ') + p.rivales.map(function (r) { return r.name; }).join(' / ') + ' · ' + p.fechaTxt;
+      b.setAttribute('aria-label', b.title);
+      const uid = (p.rivales[0] || {}).uid;
+      if (uid) b.onclick = function () { ir({ vista: 'jugador', uid: uid }); }; else b.disabled = true;
+      forma.appendChild(b);
+    });
+    app.appendChild(forma);
+    app.appendChild(el('div', 'nota', 'Del más viejo al más nuevo. Toca uno para ir al rival.'));
+
+    // ---------- números ----------
+    const gan = carrera.filter(function (p) { return p.gane; }).length;
+    let racha = 0, signo = null;
+    for (const p of carrera) { if (signo === null) { signo = p.gane; racha = 1; } else if (p.gane === signo) racha++; else break; }
+    const kp = el('div', 'kpis');
+    [[gan + '-' + (carrera.length - gan), 'ganados y perdidos', ''],
+     [Math.round(gan / carrera.length * 100) + '%', 'victorias', gan / carrera.length >= 0.5 ? 'buena' : 'mala'],
+     [(signo ? '+' : '−') + racha, signo ? 'ganados seguidos' : 'perdidos seguidos', signo ? 'buena' : 'mala']]
+      .forEach(function (par) {
+        const d = el('div', 'kpi ' + par[2]);
+        d.appendChild(el('b', null, esc(par[0])));
+        d.appendChild(el('span', null, esc(par[1])));
+        kp.appendChild(d);
+      });
+    app.appendChild(kp);
+
+    // ---------- mejor victoria: el rival mejor rankeado al que le ganó ----------
+    let mejor = null;
+    carrera.filter(function (p) { return p.gane; }).forEach(function (p) {
+      p.rivales.forEach(function (r) {
+        const reg = r.uid ? porUid(r.uid) : porNombre(r.name);
+        // Ojo: 1º de Junior A no vale lo mismo que 1º de Open. Primero pesa la
+        // categoría y después el puesto, si no "su mejor victoria" quedaba
+        // señalando al número uno de la categoría más chica.
+        const mp = reg && reg.ranking.slice().sort(function (a, b) {
+          return ordenCat(a.categoria) - ordenCat(b.categoria) || a.puesto - b.puesto;
+        })[0];
+        if (!mp) return;
+        const peor = mejor && (ordenCat(mejor.categoria) < ordenCat(mp.categoria) ||
+          (ordenCat(mejor.categoria) === ordenCat(mp.categoria) && mejor.puesto <= mp.puesto));
+        if (!peor) mejor = { puesto: mp.puesto, categoria: mp.categoria, nombre: r.name, uid: r.uid, cuando: p.fechaTxt, torneo: p.torneo, marcador: p.marcador };
+      });
+    });
+    if (mejor) {
+      const d = el('div', 'destacado');
+      d.appendChild(el('b', null, 'Su mejor victoria'));
+      const linea = el('div');
+      linea.appendChild(document.createTextNode('Le ganó a '));
+      linea.appendChild(nodoJugadores([{ uid: mejor.uid, name: mejor.nombre }], mejor.nombre));
+      linea.appendChild(document.createTextNode(', ' + mejor.puesto + 'º de ' + nombreCat(mejor.categoria) + (mejor.marcador ? ' · ' + mejor.marcador : '')));
+      d.appendChild(linea);
+      d.appendChild(el('div', 'nota', esc(mejor.torneo + ' · ' + mejor.cuando)));
+      app.appendChild(d);
+    }
   }
 
-  // próximos partidos en el torneo abierto
-  const prox = ((T && T.schedule) || []).filter(function (m) {
-    return (m.lado1 || []).concat(m.lado2 || []).some(function (x) { return x.uid === j.uid; });
+  // ---------- evolución de puntos por categoría ----------
+  if (j.ranking.length) {
+    app.appendChild(el('h2', null, 'Evolución en el ranking'));
+    j.ranking.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
+      app.appendChild(grafico(r));
+    });
+    app.appendChild(el('div', 'nota', 'Puntos acumulados fecha a fecha, según el documento oficial de la Federación.'));
+  }
+
+  // ---------- por jugar ----------
+  const prox = ((T && T.schedule) || []).filter(function (mm) {
+    return (mm.lado1 || []).concat(mm.lado2 || []).some(function (x) { return x.uid === j.uid; });
   });
   if (prox.length) {
     app.appendChild(el('h2', null, 'Por jugar'));
-    prox.forEach(function (m) { app.appendChild(filaPartido(m)); });
+    prox.forEach(function (mm) { app.appendChild(filaPartido(mm)); });
   }
 
-  // cara a cara
+  // ---------- cara a cara ----------
   if (carrera.length) {
     const riv = {};
-    carrera.forEach(function (m) {
-      m.rivales.forEach(function (r) {
+    carrera.forEach(function (p) {
+      p.rivales.forEach(function (r) {
         const k = r.uid || r.name;
         const x = riv[k] || (riv[k] = { uid: r.uid, nombre: r.name, g: 0, p: 0 });
-        if (m.gane) x.g++; else x.p++;
+        if (p.gane) x.g++; else x.p++;
       });
     });
     const top = Object.keys(riv).map(function (k) { return riv[k]; })
       .sort(function (a, b) { return (b.g + b.p) - (a.g + a.p); }).slice(0, 8);
     if (top.length) {
       app.appendChild(el('h2', null, 'Cara a cara'));
-      const lista = el('div', 'lista');
+      const caja = el('div', 'lista'); caja.style.padding = '4px 13px';
       top.forEach(function (r) {
-        const b = el('button', 'li');
-        b.appendChild(el('span', 'nm', esc(r.nombre) + '<small>' + (r.g + r.p) + (r.g + r.p === 1 ? ' partido' : ' partidos') + '</small>'));
-        b.appendChild(el('span', 'meta', '<b style="color:var(--green-2);font-size:14px">' + r.g + '</b> · ' + r.p));
-        if (r.uid) b.onclick = function () { ir({ vista: 'jugador', uid: r.uid }); };
-        lista.appendChild(b);
+        const f = el('button', 'h2h');
+        f.appendChild(el('span', 'nm', esc(r.nombre)));
+        const barra = el('span', 'barra');
+        barra.appendChild(el('i')).style.width = Math.round(r.g / (r.g + r.p) * 100) + '%';
+        f.appendChild(barra);
+        f.appendChild(el('span', 'cifra', r.g + '-' + r.p));
+        if (r.uid) f.onclick = function () { ir({ vista: 'jugador', uid: r.uid }); };
+        caja.appendChild(f);
       });
-      app.appendChild(lista);
+      app.appendChild(caja);
     }
 
     app.appendChild(el('h2', null, 'Carrera'));
     const lista2 = el('div', 'lista');
-    carrera.slice(0, 40).forEach(function (m) {
+    carrera.slice(0, 40).forEach(function (p) {
       const row = el('div', 'li');
       const nm = el('span', 'nm');
-      nm.appendChild(el('small', null, esc(m.fechaTxt + ' · ' + m.torneo)));
-      nm.appendChild(document.createTextNode(m.gane ? 'Ganó a ' : 'Perdió con '));
-      nm.appendChild(nodoJugadores(m.rivales, ''));
+      nm.appendChild(el('small', null, esc(p.fechaTxt + ' · ' + p.torneo)));
+      nm.appendChild(document.createTextNode(p.gane ? 'Ganó a ' : 'Perdió con '));
+      nm.appendChild(nodoJugadores(p.rivales, ''));
       row.appendChild(nm);
-      row.appendChild(el('span', 'meta', esc(m.marcador || '')));
+      row.appendChild(el('span', 'meta', esc(p.marcador || '')));
       lista2.appendChild(row);
     });
     app.appendChild(lista2);
@@ -1222,6 +1310,40 @@ function vJugador(app) {
     app.appendChild(el('div', 'nota', HIST ? 'Todavía no tenemos partidos de este jugador en r2sports.' : 'Cargando su carrera…'));
   }
 }
+// Línea de puntos acumulados por fecha. SVG a mano: son seis puntos, no hace
+// falta traer una librería de gráficos.
+function grafico(r) {
+  const caja = el('div', 'graf');
+  const tit = el('div', 'tit');
+  tit.appendChild(el('b', null, esc(nombreCat(r.categoria))));
+  tit.appendChild(el('span', null, r.puesto + 'º · ' + r.pts + ' puntos'));
+  caja.appendChild(tit);
+  const fs = (r.fechas || []).filter(function (f) { return f.pts != null; });
+  if (fs.length < 2) { caja.appendChild(el('div', 'nota', 'Una sola fecha con datos, no hay curva que mostrar.')); return caja; }
+  let acum = 0;
+  const puntos = fs.map(function (f) { acum += (f.pts || 0); return { nombre: f.nombre, pts: f.pts || 0, acum: acum }; });
+  const maxA = acum || 1;
+  const W = 300, H = 78, pad = 4;
+  const x = function (i) { return pad + i * (W - pad * 2) / (puntos.length - 1); };
+  const y = function (v) { return H - pad - (v / maxA) * (H - pad * 2); };
+  const linea = puntos.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.acum).toFixed(1); }).join(' ');
+  const area = linea + ' L' + x(puntos.length - 1).toFixed(1) + ' ' + (H - pad) + ' L' + x(0).toFixed(1) + ' ' + (H - pad) + ' Z';
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 16) + '" role="img" aria-label="Puntos acumulados de ' + esc(nombreCat(r.categoria)) + '">';
+  svg += '<path d="' + area + '" fill="var(--green-soft)"/>';
+  svg += '<path d="' + linea + '" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';
+  puntos.forEach(function (p, i) {
+    svg += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.acum).toFixed(1) + '" r="' + (p.pts ? 3.2 : 2) + '" fill="' + (p.pts ? 'var(--green)' : 'var(--ink-3)') + '"/>';
+    if (p.pts) svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (y(p.acum) - 7).toFixed(1) + '" text-anchor="middle">+' + p.pts + '</text>';
+    // "1ª Santiago" y "2ª Santiago" son fechas distintas: si se borra el ordinal
+    // el eje queda con dos etiquetas iguales.
+    const corta = String(p.nombre).replace(/^(\d+ª)\s*(\S+).*$/, '$1 $2').slice(0, 9);
+    svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (H + 10) + '" text-anchor="' + (i === 0 ? 'start' : i === puntos.length - 1 ? 'end' : 'middle') + '">' + esc(corta) + '</text>';
+  });
+  svg += '</svg>';
+  caja.appendChild(el('div', null, svg));
+  return caja;
+}
+
 function nombreTorneo(tid) {
   const c = catalogo().find(function (t) { return String(t.tid) === String(tid); });
   if (c) return nombreCorto(c.name, c.startDate);
