@@ -136,6 +136,20 @@
   .podio.uno b{font-weight:800}
   .mini{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:4px 0}
   .mini span{color:var(--ink-3);white-space:nowrap}
+
+  /* podio por categoría */
+  .catbox{width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:9px;display:block}
+  button.catbox:hover{border-color:var(--green-2)}
+  .catbox-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line-2)}
+  .catbox-cab b{font-size:16px;font-weight:800;letter-spacing:-.015em}
+  .catbox-cab span{margin-left:auto;font-size:12px;color:var(--ink-3);font-weight:700;white-space:nowrap}
+  .catbox-vacio{font-size:12px;color:var(--ink-3);margin-top:6px}
+  .pod-fila{display:flex;align-items:baseline;gap:9px;font-size:15.5px;padding:3px 0}
+  .pod-fila i{font-style:normal;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--ink-3);min-width:74px;flex:none}
+  .pod-fila b{font-weight:600;min-width:0}
+  .pod-fila > span{margin-left:auto;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pod-fila:first-of-type i{color:var(--oro)}
+  .pod-fila:first-of-type b{font-weight:800}
   .card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px}
   .card:hover{border-color:var(--green-2)}
   .card .t{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-3)}
@@ -265,7 +279,9 @@ function fechaDe(day, time, torneo) {
 }
 
 /* ---------- jugadores ---------- */
-const PLACEHOLDER = /^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^\s*$/i;
+// r2sports rellena los cuadros con marcadores de posición: "Winner Semis",
+// "Grupo 1 - 2do" y líneas de guiones bajos cuando el cruce está vacío.
+const PLACEHOLDER = /^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^[\s_·.-]*$/i;
 function esReal(n) { return !PLACEHOLDER.test(String(n || '')); }
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
 function jugadores() { return (JUG && JUG.jugadores) || []; }
@@ -593,18 +609,17 @@ function vInicio(app) {
     tab.appendChild(t);
     cargarTorneo(ult.tid).then(function (tt) {
       box.innerHTML = '';
-      const pods = podios(tt).slice(0, 4);
-      if (!pods.length) { box.appendChild(el('div', 'pie', 'Esa fecha todavía no tiene resultados publicados.')); return; }
-      pods.forEach(function (d) {
-        const campeon = (d.placements || []).find(function (p) { return p.rank === 1; });
-        if (!campeon) return;
+      const cats = categoriasDelTorneo(tt).filter(function (c) { return podioDe(c); });
+      if (!cats.length) { box.appendChild(el('div', 'pie', 'Esa fecha todavía no tiene resultados publicados.')); return; }
+      cats.slice(0, 3).forEach(function (c) {
+        const p = podioDe(c);
         const f = el('div', 'mini');
-        const izq = el('span'); izq.appendChild(nodoJugadores(campeon.players, ''));
+        const izq = el('span'); izq.appendChild(nodoJugadores([p.campeon], (p.campeon || {}).name || '—'));
         f.appendChild(izq);
-        f.appendChild(el('span', null, esc(d.nameEs || d.name)));
+        f.appendChild(el('span', null, esc(c.nombre)));
         box.appendChild(f);
       });
-      if (((tt.results || {}).derived)) box.appendChild(el('div', 'pie', 'Deducido de las llaves: la Federación no publicó el resumen.'));
+      if (cats.length > 3) box.appendChild(el('div', 'pie', 'y ' + (cats.length - 3) + ' categorías más'));
     });
   }
   app.appendChild(tab);
@@ -725,30 +740,117 @@ function vCampeonato(app) {
   }
 
   const cats = categoriasDelTorneo(T);
-  app.appendChild(el('h2', null, 'Llaves'));
+  app.appendChild(el('h2', null, 'Resultados por categoría'));
   if (!cats.length) app.appendChild(el('div', 'vacio', 'Todavía no hay partidos publicados.'));
-  else {
-    const lista = el('div', 'lista');
-    cats.forEach(function (c) {
-      const b = el('button', 'li');
-      b.appendChild(el('span', 'nm', esc(c.nombre) + '<small>' + c.jugados.length + ' jugados · ' + c.pendientes.length + ' por jugar</small>'));
-      b.appendChild(el('span', 'meta', '›'));
-      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid, cat: c.nombre }); };
-      lista.appendChild(b);
-    });
-    app.appendChild(lista);
-  }
+  else cats.forEach(function (c) {
+    app.appendChild(bloquePodio(c, function () { ir({ vista: 'campeonato', tid: T.tid, cat: c.nombre }); }));
+  });
+}
+// r2sports parte una categoría en varias "divisiones": los grupos del round robin,
+// el playoff y la consolación. Son fases de lo mismo, no categorías distintas, y
+// por eso la lista salía con 16 filas para 6 categorías reales.
+function baseCategoria(n) {
+  return String(n || '')
+    .replace(/\s+(Grupo|Group)\s*\d+.*$/i, '')
+    .replace(/\s+Por puestos.*$/i, '')
+    .replace(/\s*·?\s*Repechaje.*$/i, '')
+    .replace(/\s+#\d+$/, '')
+    .trim();
+}
+function esFaseGrupo(nombre) { return /\b(grupo|group)\s*\d+/i.test(nombre); }
+function esFaseSecundaria(nombre) { return /por puestos|repechaje|consolaci/i.test(nombre); }
+// Orden de importancia para mostrar las categorías.
+const PESO_CAT = [
+  [/varones.*open|men'?s singles.*open/i, 10], [/damas.*open|women/i, 20],
+  [/dobles/i, 30], [/juveniles a/i, 40], [/juveniles b/i, 50], [/juveniles c/i, 60],
+  [/juvenil|junior/i, 70], [/multibote/i, 80], [/novicios|inicial/i, 90]
+];
+function pesoCategoria(n) {
+  for (const p of PESO_CAT) if (p[0].test(n)) return p[1];
+  return 85;
 }
 function categoriasDelTorneo(t) {
   const map = {};
   const add = function (m, jugado) {
-    const k = m.division;
-    const c = map[k] || (map[k] = { nombre: k, jugados: [], pendientes: [] });
+    const b = baseCategoria(m.division);
+    const c = map[b] || (map[b] = { nombre: b, jugados: [], pendientes: [], fases: {} });
     c[jugado ? 'jugados' : 'pendientes'].push(m);
+    const f = c.fases[m.division] || (c.fases[m.division] = { nombre: m.division, jugados: [], pendientes: [] });
+    f[jugado ? 'jugados' : 'pendientes'].push(m);
   };
   ((t && t.matches) || []).forEach(function (m) { add(m, true); });
   ((t && t.schedule) || []).forEach(function (m) { add(m, false); });
-  return Object.keys(map).sort().map(function (k) { return map[k]; });
+  return Object.keys(map).map(function (k) { return map[k]; })
+    .sort(function (a, b) { return pesoCategoria(a.nombre) - pesoCategoria(b.nombre) || a.nombre.localeCompare(b.nombre, 'es'); });
+}
+// De qué fase sale el campeón. Cuando la categoría se juega por grupos, la fase
+// que define es el playoff ("Por puestos"); cuando es eliminación directa, define
+// el cuadro principal y "Por puestos" es la consolación.
+function faseQueDefine(cat) {
+  const fases = Object.keys(cat.fases).map(function (k) { return cat.fases[k]; });
+  const conFinal = fases.filter(function (f) {
+    return f.jugados.some(function (m) { return ronda(m.round).orden >= 99; });
+  });
+  const principal = conFinal.filter(function (f) { return !esFaseSecundaria(f.nombre); });
+  if (principal.length) return principal[0];
+  if (conFinal.length) return conFinal[0];
+  // Doble eliminación: no hay ronda llamada "Final", la última jugada es la final.
+  const p = fases.filter(function (f) { return !esFaseSecundaria(f.nombre) && !esFaseGrupo(f.nombre); });
+  return p[0] || fases[0] || null;
+}
+function podioDe(cat) {
+  const f = faseQueDefine(cat);
+  if (!f || !f.jugados.length) return null;
+  const conOrden = f.jugados.map(function (m) { return { m: m, o: ronda(m.round).orden }; });
+  const max = Math.max.apply(null, conOrden.map(function (x) { return x.o; }));
+  const final = conOrden.filter(function (x) { return x.o === max; }).map(function (x) { return x.m; })[0];
+  if (!final) return null;
+  const semis = f.jugados.filter(function (m) { return ronda(m.round).nombre === 'Semifinales'; })
+    .map(function (m) { return m.perdedor; }).filter(Boolean);
+  const tercero = f.jugados.filter(function (m) { return ronda(m.round).nombre === '3er lugar'; })[0];
+  const terceroExt = (cat.fases[cat.nombre + ' · Repechaje'] || {}).jugados || [];
+  let t3 = tercero || terceroExt.filter(function (m) { return ronda(m.round).nombre === '3er lugar'; })[0];
+  // Un partido por el tercer lugar con nombres de relleno no sirve de nada.
+  if (t3 && !(esReal((t3.ganador || {}).name) && esReal((t3.perdedor || {}).name))) t3 = null;
+  return {
+    fase: f.nombre, definePorPlayoff: esFaseSecundaria(f.nombre),
+    campeon: final.ganador, segundo: final.perdedor, marcador: final.marcador,
+    semis: semis, tercero: t3 ? t3.ganador : null, cuarto: t3 ? t3.perdedor : null,
+    pendiente: !!f.pendientes.length
+  };
+}
+function bloquePodio(cat, alClic) {
+  const p = podioDe(cat);
+  const box = el('div', 'catbox');
+  const cab = el('div', 'catbox-cab');
+  cab.appendChild(el('b', null, esc(cat.nombre)));
+  if (alClic) cab.appendChild(el('span', null, 'ver más ›'));
+  box.appendChild(cab);
+  if (!p) {
+    box.appendChild(el('div', 'catbox-vacio', cat.pendientes.length ? 'Todavía en juego' : 'Sin resultados publicados'));
+  } else {
+    const fila = function (etq, jugadores, extra) {
+      if (!jugadores || !jugadores.length) return;
+      const f = el('div', 'pod-fila');
+      f.appendChild(el('i', null, esc(etq)));
+      const b = el('b');
+      jugadores.forEach(function (j, i) {
+        if (i) b.appendChild(document.createTextNode(', '));
+        b.appendChild(nodoJugadores([j], (j || {}).name || '—'));
+      });
+      f.appendChild(b);
+      if (extra) f.appendChild(el('span', null, esc(extra)));
+      box.appendChild(f);
+    };
+    fila('Campeón', [p.campeon], p.marcador || '');
+    fila('Segundo', [p.segundo]);
+    if (p.tercero) { fila('Tercero', [p.tercero]); fila('Cuarto', [p.cuarto]); }
+    else fila(p.semis.length === 1 ? 'Semifinalista' : 'Semifinalistas', p.semis);
+    if (p.pendiente) box.appendChild(el('div', 'catbox-vacio', 'Quedan partidos por jugar en esta categoría'));
+    if (p.definePorPlayoff) box.appendChild(el('div', 'catbox-vacio', 'Se definió en el playoff, después de la fase de grupos'));
+  }
+  if (alClic) box.onclick = alClic;
+  return box;
 }
 
 /* ---------- llaves: ronda por ronda, como ATP ---------- */
