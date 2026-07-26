@@ -49,7 +49,7 @@ function decodeBody(buf, ct) {
   }
   return buf.toString('latin1');
 }
-async function bajar(url) {
+async function unaVez(url) {
   await pausa();
   const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'es' }, redirect: 'follow' });
   const html = decodeBody(Buffer.from(await r.arrayBuffer()), r.headers.get('content-type'));
@@ -57,6 +57,21 @@ async function bajar(url) {
     throw new FuenteBloqueada('r2sports bloqueó la IP');
   }
   return html;
+}
+// El bloqueo se levanta solo al rato: se espera y se sigue, en vez de perder la
+// corrida completa. Con 139 jugadores por bajar, abandonar al primer bloqueo
+// significaba no terminar nunca.
+const ESPERAS_BLOQUEO = [60000, 180000, 420000];
+async function bajar(url) {
+  for (let intento = 0; ; intento++) {
+    try { return await unaVez(url); }
+    catch (e) {
+      const esperar = (e instanceof FuenteBloqueada) ? ESPERAS_BLOQUEO[intento] : null;
+      if (!esperar) throw e;
+      console.error(`  ⏳ bloqueados; esperando ${Math.round(esperar / 60000)} min antes de seguir`);
+      await new Promise(function (r) { setTimeout(r, esperar); });
+    }
+  }
 }
 
 function leerJSON(f, porDefecto) {

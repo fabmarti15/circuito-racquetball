@@ -24,7 +24,7 @@ concurrency:
 jobs:
   historico:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,7 +32,7 @@ jobs:
           node-version: '20'
       - name: Recorrer carreras
         env:
-          RQ_PAUSA: '3000'        # 3 s entre pedidos: r2sports bloquea si se apura
+          RQ_PAUSA: '4000'        # 4 s entre pedidos: r2sports bloquea si se apura
           RQ_CACHE_DIAS: '7'
         run: node generar-historico.js ${{ inputs.forzar && '--forzar' || '' }} || true
       - name: Commit si cambió

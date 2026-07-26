@@ -78,13 +78,28 @@ function decodeBody(buf, contentType) {
   }
   return buf.toString('latin1');
 }
-async function g(u) {
+async function unGet(u) {
   await esperaTurno();
   if (typeof fetch === 'function') {
     const r = await fetch(u, { headers: { 'User-Agent': UA, 'Accept-Language': 'es' }, redirect: 'follow' });
     return revisarBloqueo(decodeBody(Buffer.from(await r.arrayBuffer()), r.headers.get('content-type')));
   }
   return revisarBloqueo(decodeBody(await rawGet(u, 6), ''));
+}
+// El bloqueo de r2sports es temporal: en vez de abandonar la corrida, se espera y
+// se reintenta un par de veces. Con esto una tanda de 10 minutos sobrevive a un
+// bloqueo pasajero en lugar de dejar la web sin actualizar.
+const ESPERAS_BLOQUEO = [60000, 150000];
+async function g(u) {
+  for (let intento = 0; ; intento++) {
+    try { return await unGet(u); }
+    catch (e) {
+      const esperar = (e instanceof FuenteBloqueada) ? ESPERAS_BLOQUEO[intento] : null;
+      if (!esperar) throw e;
+      console.error(`  ⏳ bloqueados; esperando ${Math.round(esperar / 1000)} s antes de reintentar`);
+      await new Promise(function (r) { setTimeout(r, esperar); });
+    }
+  }
 }
 async function pool(items, n, fn) {
   const res = []; let i = 0;

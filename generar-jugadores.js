@@ -150,6 +150,11 @@ Object.keys(r2).forEach(function (uidBruto) {
   porUid[uid] = {
     id: 'r2:' + uid, uid: uid, nombre: p.name, ciudades: p.place ? [p.place] : [],
     alias: [p.name], enR2: true, ranking: [], medallas: p.medals || null,
+    // Los títulos con su torneo: sirven para contar CUÁNDO ganó cada medalla, no
+    // solo cuántas tiene.
+    titulos: (p.titles || []).map(function (t) {
+      return { tid: t.tid, year: t.year, categoria: t.category, puesto: t.rank, label: t.label };
+    }),
     torneos: (p.tournaments || []).length
   };
 });

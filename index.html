@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-19">
+<html lang="es" data-v="2026-07-26-21">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -214,10 +214,18 @@
   .p-chip small{font-size:11.5px;color:var(--ink-3);font-weight:600}
   .medallas{display:flex;gap:12px;margin-top:12px;font-size:14px;font-weight:700;color:var(--ink-2)}
   .medallas span{display:inline-flex;gap:5px;align-items:center}
-  .forma{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
-  .forma button{width:27px;height:27px;border-radius:8px;border:0;font-size:12px;font-weight:800;color:#fff;background:var(--green-2);padding:0}
+  .forma{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .forma button{width:34px;height:34px;border-radius:9px;border:2px solid transparent;font-size:13px;font-weight:800;color:#fff;background:var(--green-2);padding:0}
   .forma button.p{background:#C2410C}
-  .forma button:disabled{opacity:.45}
+  .forma button[aria-pressed=true]{border-color:var(--ink)}
+  .detalle{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;margin-top:9px;font-size:14.5px}
+  .detalle .cuando{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .detalle ul{margin:4px 0 0;padding-left:18px}
+  .detalle li{margin:3px 0;font-size:14.5px}
+  .detalle li small{color:var(--ink-3);font-size:12.5px}
+  .medallas button{background:none;border:0;padding:4px 8px;border-radius:9px;font:inherit;font-size:14px;font-weight:700;color:var(--ink-2);display:inline-flex;gap:5px;align-items:center}
+  .medallas button[aria-pressed=true]{background:#fff}
+  .medallas button:disabled{opacity:.4}
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
   .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px}
   .kpi b{display:block;font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
@@ -1226,11 +1234,38 @@ function vJugador(app) {
     hero.appendChild(chips);
   }
   const m = j.medallas || { gold: 0, silver: 0, bronze: 0 };
+  const panelMed = el('div', 'detalle'); panelMed.hidden = true;
   if (m.gold || m.silver || m.bronze) {
     const md = el('div', 'medallas');
-    md.innerHTML = '<span>🥇 ' + m.gold + '</span><span>🥈 ' + m.silver + '</span><span>🥉 ' + m.bronze + '</span>' +
-      (j.torneos ? '<span style="margin-left:auto;color:var(--ink-3);font-weight:600">' + j.torneos + ' fechas jugadas</span>' : '');
+    // En el celular no hay hover: se toca la medalla y abajo aparece cuándo la ganó.
+    [['🥇', m.gold, 1], ['🥈', m.silver, 2], ['🥉', m.bronze, 3]].forEach(function (par) {
+      const b = el('button', null, par[0] + ' ' + par[1]);
+      b.setAttribute('aria-pressed', 'false');
+      const cuales = (j.titulos || []).filter(function (t) {
+        return par[2] === 3 ? (t.puesto === 3 || t.puesto === 4) : t.puesto === par[2];
+      });
+      if (!par[1] || !cuales.length) { b.disabled = true; b.title = 'Sin detalle de cuándo'; }
+      else b.onclick = function () {
+        const abierto = b.getAttribute('aria-pressed') === 'true';
+        md.querySelectorAll('button').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        if (abierto) { panelMed.hidden = true; return; }
+        b.setAttribute('aria-pressed', 'true');
+        panelMed.innerHTML = '';
+        panelMed.appendChild(el('div', null, '<b>' + par[0] + ' ' + (par[2] === 1 ? 'Oros' : par[2] === 2 ? 'Platas' : 'Bronces') + '</b>'));
+        const ul = el('ul');
+        cuales.slice().sort(function (a, b2) { return String(b2.year).localeCompare(String(a.year)); }).forEach(function (t) {
+          const meta = catalogo().find(function (x) { return String(x.tid) === String(t.tid); });
+          const cuando = meta ? (MES_ES[(mdy(meta.startDate) || new Date()).getMonth()] + ' ' + meta.year) : (t.year || '');
+          ul.appendChild(el('li', null, esc(cuando) + ' <small>· ' + esc(nombreDiv(t.categoria)) + '</small>'));
+        });
+        panelMed.appendChild(ul);
+        panelMed.hidden = false;
+      };
+      md.appendChild(b);
+    });
+    if (j.torneos) md.appendChild(el('span', null, '<span style="margin-left:auto;color:var(--ink-3);font-weight:600">' + j.torneos + ' fechas jugadas</span>'));
     hero.appendChild(md);
+    hero.appendChild(panelMed);
   }
   app.appendChild(hero);
 
@@ -1238,16 +1273,34 @@ function vJugador(app) {
   if (carrera.length) {
     app.appendChild(el('h2', null, 'Últimos partidos'));
     const forma = el('div', 'forma');
+    const panelForma = el('div', 'detalle'); panelForma.hidden = true;
     carrera.slice(0, 12).reverse().forEach(function (p) {
       const b = el('button', p.gane ? '' : 'p', p.gane ? 'G' : 'P');
-      b.title = (p.gane ? 'Ganó a ' : 'Perdió con ') + p.rivales.map(function (r) { return r.name; }).join(' / ') + ' · ' + p.fechaTxt;
+      const quien = p.rivales.map(function (r) { return r.name; }).join(' / ');
+      b.title = (p.gane ? 'Ganó a ' : 'Perdió con ') + quien + ' · ' + p.fechaTxt;
       b.setAttribute('aria-label', b.title);
-      const uid = (p.rivales[0] || {}).uid;
-      if (uid) b.onclick = function () { ir({ vista: 'jugador', uid: uid }); }; else b.disabled = true;
+      b.setAttribute('aria-pressed', 'false');
+      // Un toque muestra contra quién fue, sin sacarte de la página; el nombre del
+      // panel es el que lleva al rival. En el celular no hay hover.
+      b.onclick = function () {
+        const abierto = b.getAttribute('aria-pressed') === 'true';
+        forma.querySelectorAll('button').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        if (abierto) { panelForma.hidden = true; return; }
+        b.setAttribute('aria-pressed', 'true');
+        panelForma.innerHTML = '';
+        const linea = el('div');
+        linea.appendChild(document.createTextNode(p.gane ? 'Ganó a ' : 'Perdió con '));
+        linea.appendChild(nodoJugadores(p.rivales, quien));
+        if (p.marcador) linea.appendChild(document.createTextNode(' · ' + p.marcador));
+        panelForma.appendChild(linea);
+        panelForma.appendChild(el('div', 'cuando', esc(p.torneo + ' · ' + p.fechaTxt)));
+        panelForma.hidden = false;
+      };
       forma.appendChild(b);
     });
     app.appendChild(forma);
-    app.appendChild(el('div', 'nota', 'Del más viejo al más nuevo. Toca uno para ir al rival.'));
+    app.appendChild(panelForma);
+    app.appendChild(el('div', 'nota', 'Del más viejo al más nuevo. Toca uno para ver contra quién fue.'));
 
     // ---------- números ----------
     const gan = carrera.filter(function (p) { return p.gane; }).length;
@@ -1400,8 +1453,10 @@ function grafico(r) {
 
 function nombreTorneo(tid) {
   const c = catalogo().find(function (t) { return String(t.tid) === String(tid); });
-  if (c) return nombreCorto(c.name, c.startDate);
+  if (c) return tituloFecha(c);
   const n = TNOM && TNOM.torneos && TNOM.torneos[tid];
+  // Los torneos descubiertos por el histórico (internacionales, por ejemplo) no
+  // están en el catálogo: ahí se usa su nombre tal cual, acortado.
   return n ? nombreCorto(n.name, n.startDate) : 'Torneo ' + tid;
 }
 function carreraDe(j) {
