@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-16">
+<html lang="es" data-v="2026-07-26-17">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1169,8 +1169,10 @@ function vJugador(app) {
   if (j.ranking.length) {
     const chips = el('div', 'p-chips');
     j.ranking.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
-      const c = el('button', 'p-chip' + (r.puesto === 1 ? ' oro' : ''));
-      c.innerHTML = '<i>' + r.puesto + 'º</i>' + esc(nombreCat(r.categoria)) + '<small>' + r.pts + ' pts</small>';
+      const c = el('button', 'p-chip' + (r.puesto === 1 && r.pts > 0 ? ' oro' : ''));
+      // Con 0 puntos no hay puesto que mostrar: está inscrito, no rankeado.
+      c.innerHTML = (r.pts > 0 ? '<i>' + r.puesto + 'º</i>' : '') + esc(nombreCat(r.categoria)) +
+        '<small>' + (r.pts > 0 ? r.pts + ' pts' : 'sin puntos') + '</small>';
       c.onclick = function () { ir({ vista: 'ranking', cat: r.key }); };
       chips.appendChild(c);
     });
@@ -1247,9 +1249,10 @@ function vJugador(app) {
   }
 
   // ---------- evolución de puntos por categoría ----------
-  if (j.ranking.length) {
+  const conPuntos = j.ranking.filter(function (r) { return r.pts > 0; });
+  if (conPuntos.length) {
     app.appendChild(el('h2', null, 'Evolución en el ranking'));
-    j.ranking.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
+    conPuntos.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
       app.appendChild(grafico(r));
     });
     app.appendChild(el('div', 'nota', 'Puntos acumulados fecha a fecha, según el documento oficial de la Federación.'));
