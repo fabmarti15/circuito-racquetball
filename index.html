@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-v="2026-07-26-06">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -206,7 +206,7 @@
 </head>
 <body>
 <header><div class="hd" id="hd"></div></header>
-<div class="wrap"><main id="app"></main>
+<div class="wrap"><div id="avisos"></div><main id="app"></main>
   <footer id="pie"></footer>
 </div>
 <nav class="tabs"><div class="tabs-in" id="tabs"></div></nav>
@@ -1262,6 +1262,11 @@ function pintar() {
 
 /* ---------- carga ---------- */
 const cache = {};
+const cacheHora = {};
+// GitHub Pages cachea 10 minutos y sirve desde varios nodos, así que dos recargas
+// pueden dar versiones distintas. Los datos se piden siempre con un parámetro
+// distinto para saltarse la caché, y lo que ya está en memoria vence a los 2 min.
+const VENCE_MS = 120000;
 async function json(url) {
   try {
     const r = await fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now(), { cache: 'no-store' });
@@ -1269,12 +1274,35 @@ async function json(url) {
     return await r.json();
   } catch (e) { return null; }
 }
-async function cargarTorneo(tid) {
+async function cargarTorneo(tid, forzar) {
   if (!tid) return null;
-  if (cache[tid]) { T = cache[tid]; return T; }
-  const j = window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid) ? window.RQ_DATA : await json('./data/' + tid + '.json');
-  if (j && j.tournament) { cache[tid] = j; T = j; }
+  const fresco = cache[tid] && (Date.now() - (cacheHora[tid] || 0) < VENCE_MS);
+  if (fresco && !forzar) { T = cache[tid]; return T; }
+  if (window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid)) { T = window.RQ_DATA; cache[tid] = T; return T; }
+  const j = await json('./data/' + tid + '.json');
+  if (j && j.tournament) { cache[tid] = j; cacheHora[tid] = Date.now(); T = j; }
+  else if (cache[tid]) T = cache[tid];
   return T;
+}
+// Si en el servidor hay una versión distinta del programa, avisar en vez de dejar
+// al navegador con código viejo por hasta 10 minutos.
+async function revisarVersion() {
+  const mia = document.documentElement.getAttribute('data-v');
+  if (!mia || window.RQ_DATA) return;
+  try {
+    const r = await fetch('./index.html?v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const txt = await r.text();
+    const m = txt.match(/data-v="([^"]+)"/);
+    if (m && m[1] !== mia && !$('#nueva-version')) {
+      const p = el('button', 'aviso'); p.id = 'nueva-version';
+      p.style.width = '100%'; p.style.textAlign = 'left';
+      p.textContent = 'Hay una versión nueva de la página. Toca acá para recargar.';
+      p.onclick = function () { location.reload(); };
+      // Fuera de #app: ahí lo borraba el siguiente repintado.
+      $('#avisos').appendChild(p);
+    }
+  } catch (e) { /* sin conexión: no molestar */ }
 }
 async function arrancar() {
   RUTA = leerHash();
@@ -1306,10 +1334,20 @@ window.addEventListener('hashchange', function () {
 });
 arrancar();
 setInterval(function () {
+  if (window.RQ_DATA) return;
   const a = torneoActivo();
-  if (!a || window.RQ_DATA) return;
-  json('./data/' + a.tid + '.json').then(function (j) { if (j && j.tournament) { cache[a.tid] = j; if (!RUTA.tid || RUTA.tid === a.tid) T = j; pintar(); } });
+  const tid = RUTA.tid || (a && a.tid);
+  if (!tid) return;
+  cargarTorneo(tid, true).then(pintar);
 }, 120000);
+setInterval(revisarVersion, 300000);
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) return;
+  revisarVersion();
+  const a = torneoActivo();
+  const tid = RUTA.tid || (a && a.tid);
+  if (tid) cargarTorneo(tid, true).then(pintar);
+});
 </script>
 </body>
 </html>
