@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-10">
+<html lang="es" data-v="2026-07-26-11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -268,6 +268,21 @@ function faltan(d) {
   if (min < 60) return 'en ' + min + ' min';
   const h = Math.floor(min / 60), r = min % 60;
   return 'en ' + h + ' h' + (r ? ' ' + r : '');
+}
+// Nombre corto para las tarjetas de la portada: lo que distingue a una fecha de
+// otra es CUÁNDO fue, no el rótulo burocrático ("SEGUNDA FECHA 2026 - CIRCUITO
+// NACIONAL OPEN"). Queda "Nacional julio 2026", y la ciudad va aparte y más chica.
+function tituloFecha(t) {
+  const tipo = /junior/i.test(t.name || '') ? 'Nacional Junior' : 'Nacional';
+  const d = mdy(t.startDate);
+  if (!d) return tipo;
+  return tipo + ' ' + MES_ES[d.getMonth()] + ' ' + d.getFullYear();
+}
+// "Parque Deportivo Estadio Nacional - Santiago, Santiago CHI" -> "Santiago"
+function ciudadDe(venue) {
+  const v = String(venue || '');
+  const tras = v.indexOf('-') >= 0 ? v.slice(v.indexOf('-') + 1) : v;
+  return tras.split(',')[0].replace(/\bCHI\b/, '').trim();
 }
 // r2sports pone nombres larguísimos: "Torneo Nacional Junior - Clasificatorio
 // adulto". Se corta en el guión y se le agrega el año.
@@ -579,8 +594,8 @@ function vInicio(app) {
     const caja = el('div', 'fecha f' + ((i % 3) + 1));
     const cab = el('div', 'fecha-cab');
     const txt = el('div', 'txt');
-    txt.appendChild(el('h3', null, esc(nombreCorto(meta.name, meta.startDate))));
-    txt.appendChild(el('div', 'cuando', esc(rangoEs(meta.startDate, meta.endDate) + ' · ' + (meta.venue || '').split('-')[0].trim())));
+    txt.appendChild(el('h3', null, esc(tituloFecha(meta))));
+    txt.appendChild(el('div', 'cuando', esc([ciudadDe(meta.venue), rangoEs(meta.startDate, meta.endDate)].filter(Boolean).join(' · '))));
     txt.onclick = function () { ir({ vista: 'campeonato', tid: meta.tid }); };
     cab.appendChild(txt);
     const badge = el('span', 'marca-viva', 'en juego');
@@ -819,11 +834,16 @@ function podioDe(cat) {
   if (!final) return null;
   const semis = f.jugados.filter(function (m) { return ronda(m.round).nombre === 'Semifinales'; })
     .map(function (m) { return m.perdedor; }).filter(Boolean);
-  const tercero = f.jugados.filter(function (m) { return ronda(m.round).nombre === '3er lugar'; })[0];
-  const terceroExt = (cat.fases[cat.nombre + ' · Repechaje'] || {}).jugados || [];
-  let t3 = tercero || terceroExt.filter(function (m) { return ronda(m.round).nombre === '3er lugar'; })[0];
-  // Un partido por el tercer lugar con nombres de relleno no sirve de nada.
-  if (t3 && !(esReal((t3.ganador || {}).name) && esReal((t3.perdedor || {}).name))) t3 = null;
+  // El partido por el tercer lugar puede venir rotulado "3rd" o "4th" según el
+  // torneo, y en cualquiera de las fases. En el Nacional Junior el "3rd" era un
+  // cruce fantasma con nombres en blanco y el bueno estaba en "4th".
+  const esTercerLugar = function (m) {
+    const n = ronda(m.round).nombre;
+    return (n === '3er lugar' || n === '4º lugar') &&
+      esReal((m.ganador || {}).name) && esReal((m.perdedor || {}).name);
+  };
+  const todos = Object.keys(cat.fases).reduce(function (a, k) { return a.concat(cat.fases[k].jugados); }, []);
+  let t3 = f.jugados.filter(esTercerLugar)[0] || todos.filter(esTercerLugar)[0] || null;
   return {
     fase: f.nombre, definePorPlayoff: esFaseSecundaria(f.nombre),
     campeon: final.ganador, segundo: final.perdedor, marcador: final.marcador,
