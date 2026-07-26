@@ -375,7 +375,21 @@ async function buildTournament(tid) {
     startTimesReady: startTimesReady,
     horariosDesde: desdeCache || new Date().toISOString(),
     matches: matches,
-    counts: { players: players.length, divisions: divisions.length, finishedDivisions: res.divisions.length, scheduled: schedule.length, matches: matches.length },
+    // "scheduled" cuenta todo lo que r2sports lista como por jugar, incluidos los
+    // cruces fantasma: el "Final If" de la doble eliminación queda listado aunque
+    // no se juegue nunca, y eso dejaba al torneo eternamente "en juego".
+    counts: {
+      players: players.length, divisions: divisions.length,
+      finishedDivisions: res.divisions.length,
+      scheduled: schedule.length,
+      pendientes: schedule.filter(function (m) {
+        const conHora = !!(m.day && m.time);
+        const reales = !/^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^[\s_·.-]*$/i.test(String(m.p1 || '')) &&
+          !/^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^[\s_·.-]*$/i.test(String(m.p2 || ''));
+        return conHora || reales;
+      }).length,
+      matches: matches.length
+    },
     updatedAt: new Date().toISOString()
   };
 }

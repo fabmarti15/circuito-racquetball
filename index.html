@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-09">
+<html lang="es" data-v="2026-07-26-10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -360,7 +360,7 @@ function pintarHeader() {
   const activo = torneoActivo();
   if (RUTA.vista === 'campeonato' && T) {
     ctx.innerHTML = '<b>' + esc(nombreCorto(T.tournament.name, T.tournament.startDate)) + '</b>' + esc(rangoEs(T.tournament.startDate, T.tournament.endDate));
-  } else if (activo) {
+  } else if (activo && !(T && String(T.tid) === String(activo.tid) && terminado(T))) {
     ctx.innerHTML = '<span class="vivo"><i></i>en juego</span><br>' + esc(nombreCorto(activo.name, activo.startDate));
   } else if (RK && RK.corte) {
     ctx.innerHTML = 'ranking oficial<br>' + esc(RK.corte.etiqueta);
@@ -378,7 +378,21 @@ function estadoDe(t) {
   if (!i) return t.status || 'finished';
   if (f && f < hoy) return 'finished';
   if (i > hoy) return 'upcoming';
+  // Dentro de sus fechas pero sin nada real por jugar: terminó. El "Final If" de
+  // la doble eliminación queda listado como pendiente aunque no se juegue nunca.
+  const c = t.counts || {};
+  if (c.pendientes != null && c.pendientes === 0 && (c.matches || 0) > 0) return 'finished';
   return 'in-progress';
+}
+// Con el torneo ya cargado se puede saber igual, sin depender de counts.
+function pendientesReales(t) {
+  return ((t && t.schedule) || []).filter(function (m) {
+    return (m.day && m.time) || (esReal(m.p1) && esReal(m.p2));
+  }).length;
+}
+function terminado(t) {
+  if (!t) return false;
+  return pendientesReales(t) === 0 && ((t.matches || []).length > 0);
 }
 function catalogo() {
   const t = ((CAT && CAT.tournaments) || []).slice().map(function (x) {
@@ -569,7 +583,8 @@ function vInicio(app) {
     txt.appendChild(el('div', 'cuando', esc(rangoEs(meta.startDate, meta.endDate) + ' · ' + (meta.venue || '').split('-')[0].trim())));
     txt.onclick = function () { ir({ vista: 'campeonato', tid: meta.tid }); };
     cab.appendChild(txt);
-    if (meta.estado === 'in-progress') cab.appendChild(el('span', 'marca-viva', 'en juego'));
+    const badge = el('span', 'marca-viva', 'en juego');
+    if (meta.estado === 'in-progress') cab.appendChild(badge);
     caja.appendChild(cab);
     const cuerpo = el('div');
     cuerpo.appendChild(el('div', 'nota', 'Cargando…'));
@@ -583,6 +598,9 @@ function vInicio(app) {
         cuerpo.appendChild(el('div', 'vacio', 'No pudimos leer los resultados de esta fecha.'));
         return;
       }
+      // Si ya se jugó todo, se saca la marca de en juego aunque la fecha de cierre
+      // sea hoy.
+      if (terminado(t) && badge.parentNode) badge.parentNode.removeChild(badge);
       const pods = podiosUnificados(t);
       if (!pods.length) {
         cuerpo.appendChild(el('div', 'vacio', meta.estado === 'in-progress' ? 'Todavía en juego' : 'Esta fecha no tiene resultados publicados.'));
