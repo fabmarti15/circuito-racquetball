@@ -65,9 +65,30 @@
   .skel{height:70px;border-radius:var(--radius);background:linear-gradient(90deg,#F2F1ED 25%,#E9E8E3 50%,#F2F1ED 75%);background-size:200% 100%;animation:sh 1.3s infinite;margin-bottom:9px}
   @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-  /* ---------- mi jugador ---------- */
-  .me{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
-  .me label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin-bottom:7px}
+  /* ---------- portada: una sola pregunta ---------- */
+  .hero{margin-top:22px}
+  .hero h2{margin:0 0 12px;font-size:clamp(26px,7.5vw,38px);font-weight:800;font-variation-settings:'wdth' 108;letter-spacing:-.03em;line-height:1.05}
+  .buscar{position:relative}
+  .buscar .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:17px;pointer-events:none}
+  .buscar input{padding-left:38px;font-size:16px;height:48px;border-radius:12px}
+  .sug{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .sug button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+  .sug button:last-child{border-bottom:0}
+  .sug button:hover,.sug button[aria-selected=true]{background:var(--green-soft)}
+  .sug .n{font-size:15px;font-weight:600;color:var(--ink);min-width:0}
+  .sug .n small{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500}
+  .sug .n mark{background:none;color:var(--green);font-weight:800}
+  .sug .fuera{margin-left:auto;font-size:10.5px;letter-spacing:.05em;color:var(--ink-3);text-transform:uppercase;white-space:nowrap}
+  .yocard{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px;display:flex;align-items:center;gap:11px}
+  .yocard .av{width:40px;height:40px;border-radius:50%;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:none}
+  .yocard .txt{min-width:0}
+  .yocard .txt b{display:block;font-size:15px;font-weight:700}
+  .yocard .txt span{font-size:12px;color:var(--ink-3)}
+  .iconbtn{margin-left:auto;flex:none;width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink-3)}
+  .nom{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:inherit;text-decoration:underline;text-decoration-color:var(--line);text-decoration-thickness:1px;text-underline-offset:3px}
+  .nom:hover{text-decoration-color:var(--green)}
+  .ic{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .buscar .ico{display:flex;align-items:center}
 
   /* ---------- tarjeta de partido ---------- */
   .m{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 13px;margin-bottom:9px}
@@ -273,9 +294,30 @@ function carreraDe(uid) {
 }
 
 /* ---------- tarjetas ---------- */
-function nombreConYo(lado, texto) {
-  const mio = MI && (lado || []).some(function (x) { return x.uid === MI; });
-  return esc(texto || 'Por definir') + (mio ? '<span class="yo">TÚ</span>' : '');
+// Todo nombre con uid es un enlace a su perfil. Los "Winner Semis" o "Grupo 1 - 2do"
+// no tienen uid y quedan como texto plano.
+function abrirPerfil(uid) {
+  if (!uid) return;
+  JUG_ABIERTO = uid; VISTA = 'jugadores';
+  history.replaceState(null, '', '#jugadores');
+  render(); window.scrollTo(0, 0);
+}
+function nodoJugadores(lista, textoPlano, extra) {
+  const wrap = el('span');
+  const usa = (lista || []).filter(function (x) { return x && x.name; });
+  if (!usa.length) { wrap.innerHTML = esc(textoPlano || 'Por definir'); }
+  else usa.forEach(function (x, i) {
+    if (i) wrap.appendChild(document.createTextNode(' / '));
+    if (x.uid) {
+      const b = el('button', 'nom', esc(x.name));
+      b.setAttribute('aria-label', 'Ver el perfil de ' + x.name);
+      b.onclick = function (e) { e.stopPropagation(); abrirPerfil(x.uid); };
+      wrap.appendChild(b);
+    } else wrap.appendChild(document.createTextNode(x.name));
+  });
+  if (MI && usa.some(function (x) { return x.uid === MI; })) wrap.appendChild(el('span', 'yo', 'TÚ'));
+  if (extra) wrap.appendChild(el('span', 'loc', esc(extra)));
+  return wrap;
 }
 function cardPartido(m, opts) {
   opts = opts || {};
@@ -292,9 +334,9 @@ function cardPartido(m, opts) {
   top.appendChild(badge);
   c.appendChild(top);
   const vs = el('div', 'vs');
-  vs.appendChild(el('div', 'p' + (esReal(m.p1) ? '' : ' tbd'), nombreConYo(m.lado1, m.p1)));
-  vs.appendChild(el('div', 'x', 'VS'));
-  vs.appendChild(el('div', 'p b' + (esReal(m.p2) ? '' : ' tbd'), nombreConYo(m.lado2, m.p2)));
+  const a = el('div', 'p' + (esReal(m.p1) ? '' : ' tbd')); a.appendChild(nodoJugadores(m.lado1, m.p1));
+  const b = el('div', 'p b' + (esReal(m.p2) ? '' : ' tbd')); b.appendChild(nodoJugadores(m.lado2, m.p2));
+  vs.appendChild(a); vs.appendChild(el('div', 'x', 'VS')); vs.appendChild(b);
   c.appendChild(vs);
   const w = el('div', 'when');
   if (d) {
@@ -317,9 +359,9 @@ function cardResultado(m, opts) {
   c.appendChild(top);
   const g = m.ganador || {}, p = m.perdedor || {};
   const vs = el('div', 'vs');
-  vs.appendChild(el('div', 'p win', esc(g.name || '—') + (g.uid === MI ? '<span class="yo">TÚ</span>' : '') + (g.loc ? '<span class="loc">' + esc(g.loc) + '</span>' : '')));
-  vs.appendChild(el('div', 'x', 'def.'));
-  vs.appendChild(el('div', 'p b', esc(p.name || '—') + (p.uid === MI ? '<span class="yo">TÚ</span>' : '') + (p.loc ? '<span class="loc">' + esc(p.loc) + '</span>' : '')));
+  const dg = el('div', 'p win'); dg.appendChild(nodoJugadores([g], g.name || '—', g.loc || ''));
+  const dp = el('div', 'p b'); dp.appendChild(nodoJugadores([p], p.name || '—', p.loc || ''));
+  vs.appendChild(dg); vs.appendChild(el('div', 'x', 'def.')); vs.appendChild(dp);
   c.appendChild(vs);
   if (m.marcador) c.appendChild(el('div', 'score', esc(m.marcador)));
   else if (m.forfeit) c.appendChild(el('div', 'score', 'Sin presentación'));
@@ -348,58 +390,119 @@ function clasificar() {
   return { live: live, next: next, sinHora: sinHora };
 }
 
+/* ---------- iconos (SVG propio: sin depender de una fuente externa que en el
+     recinto, con mala señal, puede no cargar) ---------- */
+const ICONOS = {
+  buscar: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/>',
+  cambiar: '<circle cx="10" cy="8" r="3.2"/><path d="M4 19c1-3 3.2-4.6 6-4.6 1 0 1.9.2 2.7.6"/><path d="M17 14v6M14 17h6"/>',
+  compartir: '<path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 16V4M8 8l4-4 4 4"/>',
+  listo: '<path d="M5 13l4.5 4.5L19 7"/>'
+};
+function icono(nombre, clase) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('class', 'ic' + (clase ? ' ' + clase : ''));
+  s.innerHTML = ICONOS[nombre] || '';
+  return s;
+}
+
+/* ---------- buscador de jugadores con sugerencias ---------- */
+// Reemplaza al <select>: se escribe y aparecen coincidencias. Primero los inscritos
+// de la fecha, después el resto del circuito marcado como "otra fecha". Cada
+// sugerencia trae ciudad y categoría, que es lo que separa a Rodrigo Salgado Jr.
+// de su papá cuando el nombre no alcanza.
+function buscadorJugadores(opts) {
+  opts = opts || {};
+  const caja = el('div', 'buscar');
+  const lupa = el('span', 'ico'); lupa.appendChild(icono('buscar')); caja.appendChild(lupa);
+  const inp = el('input'); inp.type = 'search'; inp.placeholder = opts.placeholder || 'Escribe tu nombre';
+  inp.autocomplete = 'off'; inp.setAttribute('enterkeyhint', 'search'); inp.value = opts.valor || '';
+  caja.appendChild(inp);
+  const sug = el('div', 'sug'); sug.hidden = true;
+  const cont = el('div');
+  cont.appendChild(caja); cont.appendChild(sug);
+
+  const deLaFecha = ((T && T.players) || []).map(function (p) {
+    const cats = (p.divisions || []).map(function (d) { return d.divisionEs || d.division; });
+    return { uid: p.uid, name: p.name, place: p.place || '', detalle: [p.place, cats[0]].filter(Boolean).join(' · '), aqui: true };
+  });
+  const yaEstan = {};
+  deLaFecha.forEach(function (p) { yaEstan[p.uid] = true; });
+  const delCircuito = Object.keys((JUG && JUG.players) || {}).filter(function (u) { return !yaEstan[u]; })
+    .map(function (u) {
+      const p = JUG.players[u];
+      const ult = (p.tournaments || [])[p.tournaments.length - 1];
+      return { uid: u, name: p.name, place: p.place || '', detalle: [p.place, ult && ult.year].filter(Boolean).join(' · '), aqui: false };
+    });
+
+  function pintar() {
+    const k = norm(inp.value);
+    sug.innerHTML = '';
+    if (k.length < 2) { sug.hidden = true; return; }
+    const calza = function (p) { return norm(p.name + ' ' + p.place).indexOf(k) >= 0; };
+    const orden = function (a, b) {
+      const ia = norm(a.name).indexOf(k), ib = norm(b.name).indexOf(k);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.name.localeCompare(b.name, 'es');
+    };
+    const res = deLaFecha.filter(calza).sort(orden).concat(delCircuito.filter(calza).sort(orden)).slice(0, 8);
+    if (!res.length) {
+      sug.appendChild(el('div', 'note', 'Nadie con ese nombre. Prueba solo con el apellido.'));
+      sug.hidden = false; return;
+    }
+    res.forEach(function (p) {
+      const b = el('button');
+      const re = new RegExp('(' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'i');
+      const marcado = esc(p.name).replace(re, '<mark>$1</mark>');
+      b.appendChild(el('span', 'n', marcado + '<small>' + esc(p.detalle || 'Sin ciudad') + '</small>'));
+      if (!p.aqui) b.appendChild(el('span', 'fuera', 'otra fecha'));
+      b.onclick = function () { opts.onPick(p.uid); };
+      sug.appendChild(b);
+    });
+    sug.hidden = false;
+  }
+  inp.oninput = pintar;
+  if (opts.valor) pintar();
+  return { nodo: cont, input: inp };
+}
+
 /* ================= VISTA: AHORA ================= */
 function vAhora(app) {
   const g = clasificar();
+  const yo = MI ? jugador(MI) : null;
+  const hist = MI && JUG && JUG.players ? JUG.players[MI] : null;
 
-  // mi jugador
-  const me = el('div', 'me');
-  me.appendChild(el('label', null, 'Mi jugador'));
-  const fila = el('div', 'row');
-  const sel = el('select'); sel.id = 'sel';
-  sel.appendChild(el('option', null, 'Elige tu nombre de la lista…')).value = '';
-  ((T && T.players) || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); })
-    .forEach(function (p) {
-      const o = el('option'); o.value = p.uid;
-      o.textContent = p.name + (p.place ? ' · ' + p.place : '');
-      sel.appendChild(o);
+  // ---- hero: una sola pregunta ----
+  const hero = el('div', 'hero');
+  if (!MI) {
+    hero.appendChild(el('h2', null, '¿Cuándo juegas?'));
+    const b = buscadorJugadores({
+      onPick: function (uid) { MI = uid; localStorage.setItem('rq.uid', uid); render(); window.scrollTo(0, 0); }
     });
-  sel.value = MI || '';
-  sel.onchange = function () {
-    MI = this.value;
-    if (MI) localStorage.setItem('rq.uid', MI); else localStorage.removeItem('rq.uid');
-    render(); window.scrollTo(0, 0);
-  };
-  fila.appendChild(sel);
-  if (MI) {
-    const q = el('button', null, 'Quitar');
-    q.onclick = function () { MI = ''; localStorage.removeItem('rq.uid'); render(); };
-    fila.appendChild(q);
+    hero.appendChild(b.nodo);
+    hero.appendChild(el('div', 'note', 'Escribe tu nombre o apellido. Queda guardado en este teléfono, no se manda a ninguna parte.'));
+  } else {
+    const nom = (yo && yo.name) || (hist && hist.name) || 'Jugador';
+    const card = el('div', 'yocard');
+    card.appendChild(el('div', 'av', esc(nom.split(' ').map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase())));
+    const t = el('div', 'txt');
+    t.appendChild(el('b', null, esc(nom)));
+    t.appendChild(el('span', null, esc([(yo && yo.place) || (hist && hist.place), 'ver mi perfil'].filter(Boolean).join(' · '))));
+    t.onclick = function () { abrirPerfil(MI); };
+    t.style.cursor = 'pointer';
+    card.appendChild(t);
+    const cambiar = el('button', 'iconbtn'); cambiar.appendChild(icono('cambiar'));
+    cambiar.setAttribute('aria-label', 'Cambiar de jugador');
+    cambiar.onclick = function () { MI = ''; localStorage.removeItem('rq.uid'); render(); };
+    card.appendChild(cambiar);
+    hero.appendChild(card);
   }
-  me.appendChild(fila);
-  if (MI) {
-    const f2 = el('div', 'row'); f2.style.marginTop = '8px';
-    const cp = el('button', 'primary', 'Copiar mi link'); cp.style.flex = '1';
-    cp.onclick = async function () {
-      const url = location.origin + location.pathname + '?tid=' + TID + '&jugador=' + MI;
-      const yo = jugador(MI), b = this;
-      try {
-        if (navigator.share) { await navigator.share({ title: (yo ? yo.name : 'Mis partidos') + ' · Racquetball', url: url }); return; }
-        await navigator.clipboard.writeText(url);
-      } catch (e) { prompt('Copia este link:', url); return; }
-      b.textContent = 'Link copiado'; setTimeout(function () { b.textContent = 'Copiar mi link'; }, 2000);
-    };
-    f2.appendChild(cp);
-    me.appendChild(f2);
-  }
-  me.appendChild(el('div', 'note', MI ? 'Tu link abre directo en tus partidos. Sirve para mandarlo por WhatsApp.' : 'Se guarda solo en este teléfono. Tus partidos quedan fijados arriba.'));
-  app.appendChild(me);
+  app.appendChild(hero);
 
   // mis partidos
   if (MI) {
-    const yo = jugador(MI);
     const s = el('section');
-    s.appendChild(h2('Tus partidos', yo ? yo.name + (yo.place ? ' · ' + yo.place : '') : ''));
+    s.appendChild(h2('Tus partidos', ''));
     const mios = ((T && T.schedule) || []).filter(esMio)
       .sort(function (a, b) { return (fechaDe(a.day, a.time) || 8e15) - (fechaDe(b.day, b.time) || 8e15); });
     if (!yo) s.appendChild(el('div', 'empty', 'Ese jugador no está inscrito en esta fecha.'));
@@ -616,32 +719,28 @@ function vLlaves(app) {
 function vJugadores(app) {
   if (JUG_ABIERTO) return fichaJugador(app, JUG_ABIERTO);
 
-  const buscador = el('input'); buscador.type = 'search'; buscador.placeholder = 'Buscar por nombre o ciudad…'; buscador.value = BUSCA;
-  app.appendChild(buscador);
+  const b = buscadorJugadores({
+    placeholder: 'Buscar jugador del circuito',
+    onPick: function (uid) { abrirPerfil(uid); }
+  });
+  app.appendChild(b.nodo);
   const cont = el('div'); cont.style.marginTop = '12px'; app.appendChild(cont);
 
-  function pintar2() {
-    cont.innerHTML = '';
-    const k = norm(BUSCA);
-    const base = ((T && T.players) || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
-    const fil = base.filter(function (p) { return !k || norm(p.name + ' ' + (p.place || '')).indexOf(k) >= 0; });
-    cont.appendChild(h2('Inscritos en esta fecha', fil.length + ' de ' + base.length));
-    if (!fil.length) { cont.appendChild(el('div', 'empty', 'Nadie con ese nombre.')); return; }
-    const lista = el('div', 'lista');
-    fil.forEach(function (p) {
-      const b = el('button', 'li');
-      const hist = JUG && JUG.players && JUG.players[p.uid];
-      const med = hist ? hist.medals : null;
-      b.appendChild(el('span', 'nm', esc(p.name) + (p.uid === MI ? '<span class="yo">TÚ</span>' : '') + '<small>' + esc(p.place || 'Sin ciudad') + '</small>'));
-      if (med && (med.gold || med.silver || med.bronze)) b.appendChild(el('span', 'meta', '🥇' + med.gold + ' 🥈' + med.silver + ' 🥉' + med.bronze));
-      b.appendChild(el('span', 'chev', '›'));
-      b.onclick = function () { JUG_ABIERTO = p.uid; render(); window.scrollTo(0, 0); };
-      lista.appendChild(b);
-    });
-    cont.appendChild(lista);
-  }
-  buscador.oninput = function () { BUSCA = this.value; pintar2(); };
-  pintar2();
+  const base = ((T && T.players) || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
+  cont.appendChild(h2('Inscritos en esta fecha', base.length + ''));
+  if (!base.length) { cont.appendChild(el('div', 'empty', 'Todavía no hay inscritos publicados.')); return; }
+  const lista = el('div', 'lista');
+  base.forEach(function (p) {
+    const b2 = el('button', 'li');
+    const hist = JUG && JUG.players && JUG.players[p.uid];
+    const med = hist ? hist.medals : null;
+    b2.appendChild(el('span', 'nm', esc(p.name) + (p.uid === MI ? '<span class="yo">TÚ</span>' : '') + '<small>' + esc(p.place || 'Sin ciudad') + '</small>'));
+    if (med && (med.gold || med.silver || med.bronze)) b2.appendChild(el('span', 'meta', '🥇' + med.gold + ' 🥈' + med.silver + ' 🥉' + med.bronze));
+    b2.appendChild(el('span', 'chev', '›'));
+    b2.onclick = function () { abrirPerfil(p.uid); };
+    lista.appendChild(b2);
+  });
+  cont.appendChild(lista);
 }
 function fichaJugador(app, uid) {
   const p = jugador(uid) || {};
@@ -651,8 +750,28 @@ function fichaJugador(app, uid) {
   app.appendChild(volver);
 
   const f = el('div', 'ficha');
-  f.appendChild(el('h3', null, esc(p.name || (hist && hist.name) || 'Jugador')));
-  f.appendChild(el('div', 'loc2', esc([p.place, p.club, p.country].filter(Boolean).join(' · ') || 'Sin ciudad registrada')));
+  const cab = el('div'); cab.style.display = 'flex'; cab.style.alignItems = 'flex-start'; cab.style.gap = '10px';
+  const izq = el('div'); izq.style.minWidth = '0';
+  izq.appendChild(el('h3', null, esc(p.name || (hist && hist.name) || 'Jugador')));
+  izq.appendChild(el('div', 'loc2', esc([p.place, p.club, p.country].filter(Boolean).join(' · ') || 'Sin ciudad registrada')));
+  cab.appendChild(izq);
+  // Compartir vive acá, discreto: en la portada estorbaba y nadie lo iba a usar
+  // antes de saber cuándo juega.
+  const share = el('button', 'iconbtn'); share.appendChild(icono('compartir'));
+  share.setAttribute('aria-label', 'Compartir este perfil');
+  share.onclick = async function () {
+    const url = location.origin + location.pathname + '?tid=' + TID + '&jugador=' + uid;
+    const nom = p.name || (hist && hist.name) || 'Jugador';
+    try {
+      if (navigator.share) { await navigator.share({ title: nom + ' · Racquetball Chile', url: url }); return; }
+      await navigator.clipboard.writeText(url);
+    } catch (e) { prompt('Copia este link:', url); return; }
+    share.innerHTML = ''; share.appendChild(icono('listo'));
+    share.style.color = 'var(--green)';
+    setTimeout(function () { share.innerHTML = ''; share.appendChild(icono('compartir')); share.style.color = ''; }, 1800);
+  };
+  cab.appendChild(share);
+  f.appendChild(cab);
   const big = el('div', 'big');
   const med = (hist && hist.medals) || { gold: 0, silver: 0, bronze: 0 };
   [['🥇 Oros', med.gold], ['🥈 Platas', med.silver], ['🥉 Bronces', med.bronze], ['Fechas', hist ? hist.tournaments.length : 0]].forEach(function (par) {
