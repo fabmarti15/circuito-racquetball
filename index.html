@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-08">
+<html lang="es" data-v="2026-07-26-09">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -137,6 +137,20 @@
   .mini{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:4px 0}
   .mini span{color:var(--ink-3);white-space:nowrap}
 
+  /* bloque de una fecha: fondo pastel propio para que al hacer scroll se note
+     dónde empieza y dónde termina cada campeonato */
+  .fecha{border-radius:18px;padding:14px;margin-top:16px}
+  .fecha.f1{background:#EEF4F1}
+  .fecha.f2{background:#FAF3E6}
+  .fecha.f3{background:#F0F1F7}
+  .fecha-cab{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding:0 2px}
+  .fecha-cab .txt{min-width:0;cursor:pointer}
+  .fecha-cab h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.025em;line-height:1.15}
+  .fecha-cab .cuando{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+  .fecha-cab .marca-viva{flex:none;display:inline-flex;align-items:center;gap:5px;background:var(--signal);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:99px;margin-left:auto}
+  .fecha .catbox{border-color:rgba(17,20,23,.08)}
+  .fecha .btn{background:rgba(255,255,255,.72);border-color:rgba(17,20,23,.1)}
+
   /* podio por categoría */
   .catbox{width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:9px;display:block}
   button.catbox:hover{border-color:var(--green-2)}
@@ -223,6 +237,8 @@ let RUTA = { vista: 'inicio' };     // {vista, tid, cat, uid, sub}
 let T = null;                        // torneo abierto
 let CAT = null, JUG = null, RK = null, HIST = null, TNOM = null;
 let DIA = 'todo', RONDA = 0, CUADRO = false;
+// Qué fechas de la portada están desplegadas (por tid). Se conserva al repintar.
+const EXPANDIDAS = {};
 
 /* ---------- fechas ---------- */
 const DIAS = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -546,32 +562,49 @@ function vInicio(app) {
   const fechas = catalogo().filter(function (t) { return t.estado !== 'upcoming'; }).slice(0, 3);
   if (!fechas.length) { app.appendChild(el('div', 'vacio', 'Todavía no hay fechas cargadas.')); return; }
   fechas.forEach(function (meta, i) {
-    const h = el('h2');
-    h.style.cursor = 'pointer';
-    h.textContent = nombreCorto(meta.name, meta.startDate) + ' · ' + rangoEs(meta.startDate, meta.endDate);
-    h.onclick = function () { ir({ vista: 'campeonato', tid: meta.tid }); };
-    app.appendChild(h);
-    const caja = el('div');
-    caja.appendChild(el('div', 'nota', 'Cargando…'));
+    const caja = el('div', 'fecha f' + ((i % 3) + 1));
+    const cab = el('div', 'fecha-cab');
+    const txt = el('div', 'txt');
+    txt.appendChild(el('h3', null, esc(nombreCorto(meta.name, meta.startDate))));
+    txt.appendChild(el('div', 'cuando', esc(rangoEs(meta.startDate, meta.endDate) + ' · ' + (meta.venue || '').split('-')[0].trim())));
+    txt.onclick = function () { ir({ vista: 'campeonato', tid: meta.tid }); };
+    cab.appendChild(txt);
+    if (meta.estado === 'in-progress') cab.appendChild(el('span', 'marca-viva', 'en juego'));
+    caja.appendChild(cab);
+    const cuerpo = el('div');
+    cuerpo.appendChild(el('div', 'nota', 'Cargando…'));
+    caja.appendChild(cuerpo);
     app.appendChild(caja);
+
     cargarTorneo(meta.tid).then(function (t) {
-      caja.innerHTML = '';
-      if (!t) { caja.appendChild(el('div', 'nota', 'No pudimos leer esta fecha.')); return; }
-      const pods = podiosUnificados(t);
-      if (!pods.length) {
-        caja.appendChild(el('div', 'vacio', meta.estado === 'in-progress' ? 'Todavía en juego' : 'Esta fecha no tiene resultados publicados.'));
+      cuerpo.innerHTML = '';
+      // Si la lectura falló, no se pinta el podio de otra fecha: se dice que falló.
+      if (!t || String(t.tid) !== String(meta.tid)) {
+        cuerpo.appendChild(el('div', 'vacio', 'No pudimos leer los resultados de esta fecha.'));
         return;
       }
-      pods.forEach(function (p) {
-        caja.appendChild(bloquePodioSimple(p, function () {
+      const pods = podiosUnificados(t);
+      if (!pods.length) {
+        cuerpo.appendChild(el('div', 'vacio', meta.estado === 'in-progress' ? 'Todavía en juego' : 'Esta fecha no tiene resultados publicados.'));
+        return;
+      }
+      const abierta = EXPANDIDAS[meta.tid];
+      const visibles = abierta ? pods : pods.slice(0, 2);
+      visibles.forEach(function (p) {
+        cuerpo.appendChild(bloquePodioSimple(p, function () {
           ir(p.conLlave ? { vista: 'campeonato', tid: meta.tid, cat: p.cat } : { vista: 'campeonato', tid: meta.tid });
         }));
       });
-      if (((t.results || {}).derived)) caja.appendChild(el('div', 'nota', 'La Federación no publicó el resumen de esta fecha: estos podios salen de las llaves.'));
+      if (pods.length > 2) {
+        const b = el('button', 'btn', abierta ? 'Ver menos' : 'Ver las otras ' + (pods.length - 2) + ' categorías');
+        b.onclick = function () { EXPANDIDAS[meta.tid] = !abierta; pintar(); };
+        cuerpo.appendChild(b);
+      }
+      if (((t.results || {}).derived)) cuerpo.appendChild(el('div', 'nota', 'La Federación no publicó el resumen de esta fecha: estos podios salen de las llaves.'));
     });
   });
   const b = el('button', 'btn', 'Ver todos los campeonatos');
-  b.style.marginTop = '14px';
+  b.style.marginTop = '16px';
   b.onclick = function () { ir({ vista: 'campeonatos' }); };
   app.appendChild(b);
 }
@@ -1296,15 +1329,24 @@ async function json(url) {
     return await r.json();
   } catch (e) { return null; }
 }
+// Devuelve el torneo PEDIDO o null. Antes, si la lectura fallaba, dejaba el
+// torneo anterior en T y la portada pintaba el podio de otra fecha bajo el
+// título equivocado: la Segunda Fecha mostraba los campeones del Nacional Junior.
 async function cargarTorneo(tid, forzar) {
   if (!tid) return null;
   const fresco = cache[tid] && (Date.now() - (cacheHora[tid] || 0) < VENCE_MS);
-  if (fresco && !forzar) { T = cache[tid]; return T; }
-  if (window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid)) { T = window.RQ_DATA; cache[tid] = T; return T; }
+  if (fresco && !forzar) return cache[tid];
+  if (window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid)) { cache[tid] = window.RQ_DATA; return cache[tid]; }
   const j = await json('./data/' + tid + '.json');
-  if (j && j.tournament) { cache[tid] = j; cacheHora[tid] = Date.now(); T = j; }
-  else if (cache[tid]) T = cache[tid];
-  return T;
+  if (j && j.tournament && String(j.tid) === String(tid)) { cache[tid] = j; cacheHora[tid] = Date.now(); return j; }
+  return cache[tid] || null;
+}
+// T es el torneo que se está mirando. Se fija aparte de la carga para que un
+// error de red no cambie de torneo sin avisar.
+async function abrirTorneo(tid, forzar) {
+  const t = await cargarTorneo(tid, forzar);
+  if (t && String(t.tid) === String(tid)) T = t;
+  return t;
 }
 // Si en el servidor hay una versión distinta del programa, avisar en vez de dejar
 // al navegador con código viejo por hasta 10 minutos.
@@ -1339,7 +1381,7 @@ async function arrancar() {
   CAT = cat; RK = rk;
   pintar();
   const objetivo = RUTA.tid || (torneoActivo() || {}).tid || (ultimoJugado() || {}).tid;
-  const [ju] = await Promise.all([json('./data/jugadores-circuito.json'), cargarTorneo(objetivo)]);
+  const [ju] = await Promise.all([json('./data/jugadores-circuito.json'), abrirTorneo(objetivo)]);
   JUG = ju;
   pintar();
   const [hi, no] = await Promise.all([json('./data/historico.json'), json('./data/torneos-nombres.json')]);
@@ -1347,12 +1389,12 @@ async function arrancar() {
   pintar();
 }
 
-window.addEventListener('popstate', function () { RUTA = leerHash(); RONDA = 0; CUADRO = false; if (RUTA.tid) cargarTorneo(RUTA.tid).then(pintar); else pintar(); });
+window.addEventListener('popstate', function () { RUTA = leerHash(); RONDA = 0; CUADRO = false; if (RUTA.tid) abrirTorneo(RUTA.tid).then(pintar); else pintar(); });
 window.addEventListener('hashchange', function () {
   const nueva = leerHash();
   if (JSON.stringify(nueva) === JSON.stringify(RUTA)) return;
   RUTA = nueva; RONDA = 0; CUADRO = false;
-  if (RUTA.tid) cargarTorneo(RUTA.tid).then(pintar); else pintar();
+  if (RUTA.tid) abrirTorneo(RUTA.tid).then(pintar); else pintar();
 });
 arrancar();
 setInterval(function () {
@@ -1360,7 +1402,7 @@ setInterval(function () {
   const a = torneoActivo();
   const tid = RUTA.tid || (a && a.tid);
   if (!tid) return;
-  cargarTorneo(tid, true).then(pintar);
+  abrirTorneo(tid, true).then(pintar);
 }, 120000);
 setInterval(revisarVersion, 300000);
 document.addEventListener('visibilitychange', function () {
@@ -1368,7 +1410,7 @@ document.addEventListener('visibilitychange', function () {
   revisarVersion();
   const a = torneoActivo();
   const tid = RUTA.tid || (a && a.tid);
-  if (tid) cargarTorneo(tid, true).then(pintar);
+  if (tid) abrirTorneo(tid, true).then(pintar);
 });
 </script>
 </body>
