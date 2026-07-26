@@ -38,7 +38,7 @@
 
   /* barra inferior */
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-  .tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+  .tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
   .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 2px 10px;border:0;background:none;color:var(--ink-3);font-size:11.5px;font-weight:700;cursor:pointer;position:relative}
   .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tab[aria-current=true]{color:var(--green)}
@@ -314,12 +314,11 @@ function leerHash() {
 const TABS = [
   ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>'],
   ['campeonatos', 'Campeonatos', '<path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M12 12v4M8 20h8"/><path d="M16 5h3v2a3 3 0 0 1-3 3M8 5H5v2a3 3 0 0 0 3 3"/>'],
-  ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>'],
   ['ranking', 'Ranking', '<path d="M5 20V11M12 20V4M19 20v-7"/>']
 ];
 function pintarTabs() {
   const c = $('#tabs'); c.innerHTML = '';
-  const activa = { jugador: 'jugadores', campeonato: 'campeonatos' }[RUTA.vista] || RUTA.vista;
+  const activa = { jugador: 'ranking', jugadores: 'ranking', campeonato: 'campeonatos' }[RUTA.vista] || RUTA.vista;
   TABS.forEach(function (t) {
     const b = el('button', 'tab', '<svg viewBox="0 0 24 24" aria-hidden="true">' + t[2] + '</svg>' + t[1]);
     b.setAttribute('aria-current', activa === t[0]);
@@ -475,7 +474,7 @@ function buscador(placeholder, onPick) {
       const re = new RegExp('(' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'i');
       const mejor = j.ranking.slice().sort(function (x, y) { return x.puesto - y.puesto; })[0];
       b.appendChild(el('span', 'n', esc(j.nombre).replace(re, '<mark>$1</mark>') +
-        '<small>' + esc([j.ciudad, mejor ? mejor.puesto + 'º ' + mejor.categoria : ''].filter(Boolean).join(' · ') || 'sin ciudad') + '</small>'));
+        '<small>' + esc([j.ciudad, mejor ? mejor.puesto + 'º ' + nombreCat(mejor.categoria) : ''].filter(Boolean).join(' · ') || 'sin ciudad') + '</small>'));
       b.onclick = function () { onPick(j); };
       caja2.appendChild(b);
     });
@@ -662,7 +661,7 @@ function listaPodios(pods, t) {
 function tarjetaCategoria(c) {
   const b = el('button', 'card');
   b.appendChild(el('div', 't', esc('Ranking oficial')));
-  b.appendChild(el('div', 'n', esc(c.label)));
+  b.appendChild(el('div', 'n', esc(nombreCat(c.label))));
   b.appendChild(el('div', 'd', c.conPuntos + ' con puntos de ' + c.total));
   if (c.lider) {
     const l = el('div', 'l');
@@ -951,19 +950,29 @@ function cuadroCompleto(nombres, grupos) {
     const col = el('div', 'col');
     col.appendChild(el('div', 'rot', esc(n)));
     const G = grupos[n];
+    // Los nombres del cuadro también llevan al perfil. Se enlaza el nombre y no la
+    // tarjeta completa, para no abrir un perfil al arrastrar el cuadro de lado.
+    const lado = function (lista, texto, clase, marcador) {
+      const d = el('div', clase || null);
+      const s = el('span'); s.appendChild(nodoJugadores(lista, texto));
+      d.appendChild(s);
+      if (marcador != null) d.appendChild(el('b', null, String(marcador)));
+      return d;
+    };
     G.pend.forEach(function (m) {
       const c = el('div', 'cruce');
-      c.innerHTML = '<div><span>' + esc(m.p1 || 'Por definir') + '</span></div><div class="l2"><span>' + esc(m.p2 || 'Por definir') + '</span></div>';
+      c.appendChild(lado(m.lado1, m.p1 || 'Por definir'));
+      c.appendChild(lado(m.lado2, m.p2 || 'Por definir', 'l2'));
       const d = fechaDe(m.day, m.time, T);
       if (d) c.appendChild(el('div', 'l2', '<b>' + hhmm(d) + '</b>'));
       col.appendChild(c);
     });
     G.jugados.forEach(function (m) {
-      const g = (m.ganador || {}).name || '—', p = (m.perdedor || {}).name || '—';
       const gs = m.games || [];
       const sg = gs.filter(function (x) { return x.w > x.l; }).length, sp = gs.filter(function (x) { return x.l > x.w; }).length;
       const c = el('div', 'cruce');
-      c.innerHTML = '<div class="g"><span>' + esc(g) + '</span><b>' + sg + '</b></div><div class="l2"><span>' + esc(p) + '</span><b>' + sp + '</b></div>';
+      c.appendChild(lado([m.ganador || {}], (m.ganador || {}).name || '—', 'g', sg));
+      c.appendChild(lado([m.perdedor || {}], (m.perdedor || {}).name || '—', 'l2', sp));
       col.appendChild(c);
     });
     inner.appendChild(col);
@@ -975,6 +984,7 @@ function cuadroCompleto(nombres, grupos) {
 /* ================= JUGADORES ================= */
 function vJugadores(app) {
   app.appendChild(el('h1', null, 'Jugadores'));
+  app.appendChild(el('div', 'nota', 'Esta lista ahora vive dentro de Ranking. El buscador está arriba de esa sección.'));
   const total = jugadores().length;
   app.appendChild(el('div', 'sub', total + ' personas del circuito, del ranking oficial y de r2sports.'));
   app.appendChild(buscador('Busca por nombre o ciudad', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
@@ -1033,9 +1043,9 @@ function vJugador(app) {
   // ranking oficial por categoría, con desglose por fecha
   if (j.ranking && j.ranking.length) {
     app.appendChild(el('h2', null, 'Ranking oficial' + (RK && RK.corte ? ' · ' + RK.corte.etiqueta : '')));
-    j.ranking.slice().sort(function (a, b) { return a.puesto - b.puesto; }).forEach(function (r) {
+    j.ranking.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
       const c = el('div', 'card'); c.style.marginBottom = '9px';
-      c.appendChild(el('div', 't', esc(r.categoria)));
+      c.appendChild(el('div', 't', esc(nombreCat(r.categoria))));
       c.appendChild(el('div', 'n', r.puesto + 'º' + (r.empatado ? ' =' : '') + ' · ' + r.pts + ' puntos'));
       c.appendChild(el('div', 'd', r.jugadas + (r.jugadas === 1 ? ' fecha jugada' : ' fechas jugadas') + (r.def ? ' · defiende ' + r.def : '')));
       const conPts = (r.fechas || []).filter(function (f) { return f.pts != null; });
@@ -1134,43 +1144,99 @@ function carreraDe(j) {
 }
 
 /* ================= RANKING ================= */
+// Los nombres del documento oficial no se entienden solos: "Singles A" no dice que
+// es el nivel intermedio. Se renombra solo lo que se ve en pantalla; los datos
+// siguen siendo los del PDF. Junior queda igual, porque ahí las letras sí se usan.
+const NOMBRE_CAT = {
+  'Singles Open': 'Open', 'Singles Damas': 'Damas', 'Dobles Open': 'Dobles',
+  'Singles A': 'Intermedia', 'Singles Inicial': 'Principiantes'
+};
+const EXPLICA_CAT = {
+  'Open': 'el nivel más alto, abierta a todos',
+  'Damas': 'solo mujeres',
+  'Dobles': 'en parejas, mixta',
+  'Intermedia': 'nivel intermedio',
+  'Principiantes': 'quienes recién empiezan',
+  'Junior Multibote': 'los más chicos: la pelota puede picar más de una vez'
+};
+const ORDEN_CAT = ['Open', 'Damas', 'Dobles', 'Intermedia', 'Principiantes',
+  'Junior A', 'Junior B', 'Junior C', 'Junior Damas', 'Junior Multibote'];
+function nombreCat(label) { return NOMBRE_CAT[label] || label; }
+function ordenCat(label) {
+  const i = ORDEN_CAT.indexOf(nombreCat(label));
+  return i < 0 ? 99 : i;
+}
+function esJunior(label) { return /junior/i.test(nombreCat(label)); }
+function categoriasRk() {
+  return ((RK && RK.categorias) || []).slice().sort(function (a, b) { return ordenCat(a.label) - ordenCat(b.label); });
+}
+function filaRk(p, C) {
+  const reg = porNombre(p.nombre);
+  const b = el('button', 'li' + (p.puesto <= 3 && p.pts > 0 ? ' top' : ''));
+  // Quien no sumó puntos no tiene puesto: marcar 37 personas como "61º=" no dice nada.
+  b.appendChild(el('span', 'pos', p.pts > 0 ? (p.puesto + 'º' + (p.empatado ? '=' : '')) : '—'));
+  const nm = el('span', 'nm');
+  nm.appendChild(nodoJugadores([{ uid: reg && reg.uid, name: p.nombre }], p.nombre));
+  if (p.ciudad) nm.appendChild(el('small', null, esc(p.ciudad)));
+  b.appendChild(nm);
+  b.appendChild(el('span', 'pts', String(p.pts)));
+  // Tocar cualquier parte de la fila lleva al perfil, no solo el nombre.
+  if (reg && reg.uid) b.onclick = function () { ir({ vista: 'jugador', uid: reg.uid }); };
+  return b;
+}
 function vRanking(app) {
-  app.appendChild(el('h1', null, 'Ranking oficial'));
-  if (!RK) { app.appendChild(el('div', 'nota', 'Cargando…')); return; }
-  app.appendChild(el('div', 'sub', 'Federación Chilena de Racquetball · corte ' + RK.corte.etiqueta));
+  if (!RK) { app.appendChild(el('h1', null, 'Ranking')); app.appendChild(el('div', 'nota', 'Cargando…')); return; }
 
-  if (!RUTA.cat) {
-    const cards = el('div', 'cards');
-    RK.categorias.forEach(function (c) { cards.appendChild(tarjetaCategoria(c)); });
-    app.appendChild(cards);
-    app.appendChild(el('div', 'nota', 'Los puntos y los puestos son los del documento oficial. Nada de esto lo calcula la web.'));
+  // ---- una categoría completa ----
+  if (RUTA.cat) {
+    const C = categoriasRk().find(function (c) { return c.key === RUTA.cat; });
+    if (!C) { app.appendChild(el('div', 'vacio', 'No encontramos esa categoría.')); return; }
+    app.appendChild(el('h1', null, nombreCat(C.label)));
+    const expl = EXPLICA_CAT[nombreCat(C.label)];
+    app.appendChild(el('div', 'sub', [expl, C.total + ' jugadores', C.conPuntos + ' con puntos'].filter(Boolean).join(' · ')));
+    const lista = el('div', 'lista');
+    C.jugadores.forEach(function (p) { lista.appendChild(filaRk(p, C)); });
+    app.appendChild(lista);
+    if (C.desordenEnPdf) app.appendChild(el('div', 'aviso', 'En el documento oficial esta categoría venía sin reordenar: los puestos de acá se recalcularon desde los puntos.'));
+    if ((C.duplicados || []).length) app.appendChild(el('div', 'aviso', 'El documento repetía a ' + C.duplicados.map(function (d) { return d.nombre; }).join(', ') + '. Se usó la fila con puntos.'));
+    app.appendChild(el('div', 'nota', RK.desempate));
     return;
   }
-  const C = RK.categorias.find(function (c) { return c.key === RUTA.cat; });
-  if (!C) { app.appendChild(el('div', 'vacio', 'No encontramos esa categoría.')); return; }
-  const volver = el('button', 'btn', '← Todas las categorías');
-  volver.onclick = function () { ir({ vista: 'ranking' }); };
-  app.appendChild(volver);
-  app.appendChild(el('h2', null, C.label));
-  app.appendChild(el('div', 'sub', C.total + ' jugadores · ' + C.conPuntos + ' con puntos'));
 
-  const lista = el('div', 'lista');
-  C.jugadores.forEach(function (p) {
-    const b = el('button', 'li' + (p.puesto <= 3 && p.pts > 0 ? ' top' : ''));
-    b.appendChild(el('span', 'pos', p.puesto + 'º' + (p.empatado ? '=' : '')));
-    const reg = porNombre(p.nombre);
-    const nm = el('span', 'nm');
-    nm.appendChild(nodoJugadores([{ uid: reg && reg.uid, name: p.nombre }], p.nombre));
-    if (p.ciudad) nm.appendChild(el('small', null, esc(p.ciudad)));
-    b.appendChild(nm);
-    b.appendChild(el('span', 'pts', String(p.pts)));
-    if (reg && reg.uid) b.onclick = function () { ir({ vista: 'jugador', uid: reg.uid }); };
-    lista.appendChild(b);
+  // ---- índice: top 5 de cada categoría ----
+  app.appendChild(el('h1', null, 'Ranking'));
+  app.appendChild(el('div', 'sub', 'Federación Chilena de Racquetball · corte ' + RK.corte.etiqueta));
+  app.appendChild(buscador('Busca un jugador', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
+
+  let bloque = '';
+  categoriasRk().forEach(function (C) {
+    const b = esJunior(C.label) ? 'Junior' : 'Adultos';
+    if (b !== bloque) { bloque = b; app.appendChild(el('h2', null, b)); }
+    const caja = el('div', 'catbox');
+    const cab = el('div', 'catbox-cab');
+    cab.appendChild(el('b', null, esc(nombreCat(C.label))));
+    cab.appendChild(el('span', null, 'ver los ' + C.total + ' ›'));
+    caja.appendChild(cab);
+    const expl = EXPLICA_CAT[nombreCat(C.label)];
+    if (expl) caja.appendChild(el('div', 'catbox-vacio', expl));
+    const lista = el('div');
+    C.jugadores.slice(0, 5).forEach(function (p) {
+      const reg = porNombre(p.nombre);
+      const f = el('div', 'podio' + (p.puesto === 1 ? ' uno' : ''));
+      f.appendChild(el('i', null, p.puesto + 'º'));
+      const nb = el('b'); nb.appendChild(nodoJugadores([{ uid: reg && reg.uid, name: p.nombre }], p.nombre));
+      f.appendChild(nb);
+      f.appendChild(el('span', null, String(p.pts)));
+      lista.appendChild(f);
+    });
+    caja.appendChild(lista);
+    const ver = el('button', 'btn', 'Ver la tabla completa');
+    ver.style.marginTop = '10px';
+    ver.onclick = function () { ir({ vista: 'ranking', cat: C.key }); };
+    caja.appendChild(ver);
+    app.appendChild(caja);
   });
-  app.appendChild(lista);
-  if (C.desordenEnPdf) app.appendChild(el('div', 'aviso', 'En el documento oficial esta categoría venía sin reordenar: los puestos de acá se recalcularon desde los puntos.'));
-  if ((C.duplicados || []).length) app.appendChild(el('div', 'aviso', 'El documento repetía a ' + C.duplicados.map(function (d) { return d.nombre; }).join(', ') + '. Se usó la fila con puntos.'));
-  app.appendChild(el('div', 'nota', RK.desempate));
+  app.appendChild(el('div', 'nota', 'Los puntos y los puestos son los del documento oficial. Nada de esto lo calcula la web. ' + RK.desempate));
 }
 
 /* ---------- pie ---------- */
