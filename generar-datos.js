@@ -2,7 +2,6 @@
  * generar-datos.js — Re-scrapea r2sports (directo, sin proxy) y escribe en data/:
  *   data/<TID>.json      un torneo (divisiones, jugadores, resultados, llaves, horarios)
  *   data/index.json      catálogo de torneos del circuito + categorías
- *   data/ranking.json    ranking por categoría (puntaje oficial FECHIRA)
  *   data/jugadores.json  índice de jugadores cruzado entre torneos
  *   data.json            torneo destacado (compatibilidad)
  *
@@ -15,7 +14,6 @@ const path = require('path');
 const https = require('https');
 const http = require('http');
 const R2 = require(path.join(__dirname, 'parser.js'));
-const RANK = require(path.join(__dirname, 'ranking.js'));
 const VB = require(path.join(__dirname, 'bracket.js'));
 
 const BASE = 'https://www.r2sports.com/tourney';
@@ -462,10 +460,10 @@ function aggregatePlayers(allData) {
   if (featured) catalog.featured = featured.tid;
   writeIfChanged(path.join(DATA, 'index.json'), catalog);
 
-  const ranking = RANK.computeRankings(allData.map(function (T) {
-    return { tid: T.tid, year: T.year, dateKey: dateKey(T.tournament.startDate), results: T.results };
-  }));
-  writeIfChanged(path.join(DATA, 'ranking.json'), ranking);
+  // El ranking NO se calcula acá. Los puntos son los del documento oficial de la
+  // Federación y los importa generar-ranking-oficial.js. La tabla de puntaje que
+  // había antes era inventada: daba a Christian Troncoso 2100 como líder de Dobles
+  // Open cuando el oficial es Jaime Mansilla con 7200.
 
   const jugadores = { updatedAt: new Date().toISOString(), players: aggregatePlayers(allData) };
   writeIfChanged(path.join(DATA, 'jugadores.json'), jugadores);
@@ -476,5 +474,5 @@ function aggregatePlayers(allData) {
   const hb = new Date().toISOString().slice(0, 7), hbf = path.join(DATA, '.heartbeat');
   if (!fs.existsSync(hbf) || fs.readFileSync(hbf, 'utf8').trim() !== hb) fs.writeFileSync(hbf, hb);
 
-  console.log(`Scrapeados ${scraped}, reusados ${reused} · Catálogo ${catalog.tournaments.length} torneos · Ranking ${ranking.categories.length} cat · Jugadores ${Object.keys(jugadores.players).length}`);
+  console.log(`Scrapeados ${scraped}, reusados ${reused} · Catálogo ${catalog.tournaments.length} torneos · Jugadores ${Object.keys(jugadores.players).length}`);
 })().catch(function (e) { console.error('ERROR:', e.stack || e.message); process.exit(1); });

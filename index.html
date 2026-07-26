@@ -3,179 +3,169 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Racquetball Chile · horarios y resultados</title>
-<meta name="description" content="Horarios, resultados, llaves, jugadores y ranking del Circuito Nacional de Racquetball de Chile, en formato legible.">
-<meta name="theme-color" content="#0B5D4E">
+<title>Racquetball Chile · ranking y campeonatos</title>
+<meta name="description" content="Ranking oficial, campeonatos, llaves y jugadores del Circuito Nacional de Racquetball de Chile.">
+<meta name="theme-color" content="#0A4A3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..700&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Verde cancha sobrio como único color estructural; el naranja se reserva
-       exclusivamente para lo que está jugándose, así conserva su fuerza. */
     --paper:#FCFCFA; --card:#FFFFFF; --ink:#111417; --ink-2:#565E66; --ink-3:#8C949B;
     --line:#E8E6E0; --line-2:#F1EFEA;
     --green:#0A4A3E; --green-2:#0F6E56; --green-soft:#EEF4F1;
-    --signal:#C2410C; --signal-soft:#FDF1EA; --radius:12px;
-    --sans:'Archivo','Helvetica Neue',Helvetica,sans-serif;
+    --signal:#C2410C; --signal-soft:#FDF1EA;
+    --oro:#8A5A00; --oro-soft:#FBF3E2;
+    --radius:12px; --sans:'Archivo','Helvetica Neue',Helvetica,sans-serif;
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
-  body{
-    margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans);
-    font-variation-settings:'wdth' 100; line-height:1.45; -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:780px;margin:0 auto;padding:0 18px calc(96px + env(safe-area-inset-bottom))}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 18px calc(104px + env(safe-area-inset-bottom))}
 
-  /* ---------- header ---------- */
-  header{position:sticky;top:0;z-index:30;background:rgba(251,251,249,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-  .hd{max-width:780px;margin:0 auto;padding:11px 18px}
-  .kicker{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:700}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--signal);animation:pulse 1.8s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  h1{margin:3px 0 2px;font-size:clamp(17px,4.6vw,23px);font-weight:800;font-variation-settings:'wdth' 112;letter-spacing:-.015em;line-height:1.14}
-  .sub{font-size:12px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:3px 10px}
-  .sub b{color:var(--ink-2);font-weight:600}
-  #torneoSel{margin-top:7px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 8px;max-width:100%}
+  /* barra superior */
+  header{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line)}
+  .hd{max-width:760px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:10px;min-height:52px}
+  .marca{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--ink);min-width:0}
+  .marca b{font-size:15.5px;font-weight:800;letter-spacing:-.015em;white-space:nowrap}
+  .marca .pelota{width:9px;height:9px;border-radius:50%;background:var(--green);flex:none}
+  .atras{border:0;background:none;padding:6px 8px 6px 0;margin-left:-4px;cursor:pointer;color:var(--ink-2);display:flex;align-items:center}
+  .ctx{margin-left:auto;text-align:right;min-width:0;font-size:12px;color:var(--ink-3);line-height:1.3}
+  .ctx b{display:block;color:var(--ink-2);font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vivo{display:inline-flex;align-items:center;gap:5px;color:var(--signal);font-weight:700}
+  .vivo i{width:7px;height:7px;border-radius:50%;background:var(--signal);animation:lat 1.8s infinite}
+  @keyframes lat{0%,100%{opacity:1}50%{opacity:.25}}
 
-  /* ---------- tabbar ---------- */
-  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-  .tabs-in{max-width:780px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
-  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 8px;border:0;background:none;color:var(--ink-3);font-size:10.5px;font-weight:700;letter-spacing:.02em;cursor:pointer}
-  .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  /* barra inferior */
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 2px 10px;border:0;background:none;color:var(--ink-3);font-size:11.5px;font-weight:700;cursor:pointer;position:relative}
+  .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tab[aria-current=true]{color:var(--green)}
-  .tab[aria-current=true] svg{stroke-width:2.4}
+  .tab[aria-current=true] svg{stroke-width:2.3}
+  .tab[aria-current=true]::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:3px;border-radius:0 0 3px 3px;background:var(--green)}
 
-  /* ---------- comunes ---------- */
-  section{margin-top:28px}
-  .h2{display:flex;align-items:baseline;gap:9px;margin:0 0 4px;padding-bottom:6px;border-bottom:1px solid var(--ink)}
-  .h2 span{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-  .h2 em{font-style:normal;font-size:12px;color:var(--ink-3);font-weight:600;margin-left:auto;text-align:right}
+  /* tipografía y bloques */
+  h1{margin:20px 0 12px;font-size:clamp(23px,6.2vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1.08}
+  h2{margin:26px 0 8px;font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+  h3{margin:0 0 2px;font-size:19px;font-weight:800;letter-spacing:-.02em}
+  p{margin:0}
+  .sub{font-size:13px;color:var(--ink-3);margin-top:-4px;margin-bottom:14px}
+  .nota{font-size:12px;color:var(--ink-3);margin-top:10px;line-height:1.55}
+  .aviso{background:#FFFBEB;border:1px solid #F4E4B8;color:#7A5A00;padding:11px 13px;border-radius:var(--radius);font-size:13px;margin-top:12px}
+  .vacio{padding:20px 14px;border:1px dashed var(--line);border-radius:var(--radius);color:var(--ink-3);font-size:14px;text-align:center}
   input,select,button{font:inherit}
-  input[type=search],select{width:100%;font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
-  input[type=search]:focus,select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:transparent}
-  button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);padding:10px 13px;font-size:14px;font-weight:600}
-  button.primary{background:var(--green);border-color:var(--green);color:#fff}
-  button:active{transform:translateY(1px)}
-  .row{display:flex;gap:8px}
-  .empty{padding:18px 14px;border:1px dashed var(--line);border-radius:var(--radius);color:var(--ink-3);font-size:14px;text-align:center}
-  .note{font-size:12px;color:var(--ink-3);margin-top:8px;line-height:1.5}
-  .warn{background:#FFFBEB;border:1px solid #F4E4B8;color:#7A5A00;padding:11px 13px;border-radius:12px;font-size:13px;margin-top:14px}
-  .chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 4px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  .chips::-webkit-scrollbar{display:none}
-  .chip{white-space:nowrap;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:600;color:var(--ink-2)}
-  .chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
-  .skel{height:70px;border-radius:var(--radius);background:linear-gradient(90deg,#F2F1ED 25%,#E9E8E3 50%,#F2F1ED 75%);background-size:200% 100%;animation:sh 1.3s infinite;margin-bottom:9px}
-  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-  /* ---------- portada: una sola pregunta ---------- */
-  .hero{margin-top:22px}
-  .hero h2{margin:0 0 12px;font-size:clamp(26px,7.5vw,38px);font-weight:800;font-variation-settings:'wdth' 108;letter-spacing:-.03em;line-height:1.05}
-  .buscar{position:relative}
-  .buscar .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:17px;pointer-events:none}
-  .buscar input{padding-left:38px;font-size:16px;height:48px;border-radius:12px}
-  .sug{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .sug button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
-  .sug button:last-child{border-bottom:0}
-  .sug button:hover,.sug button[aria-selected=true]{background:var(--green-soft)}
-  .sug .n{font-size:15px;font-weight:600;color:var(--ink);min-width:0}
-  .sug .n small{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500}
-  .sug .n mark{background:none;color:var(--green);font-weight:800}
-  .sug .fuera{margin-left:auto;font-size:10.5px;letter-spacing:.05em;color:var(--ink-3);text-transform:uppercase;white-space:nowrap}
-  .yocard{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px;display:flex;align-items:center;gap:11px}
-  .yocard .av{width:40px;height:40px;border-radius:50%;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:none}
-  .yocard .txt{min-width:0}
-  .yocard .txt b{display:block;font-size:15px;font-weight:700}
-  .yocard .txt span{font-size:12px;color:var(--ink-3)}
-  .iconbtn{margin-left:auto;flex:none;width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink-3)}
-  .nom{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:inherit;text-decoration:underline;text-decoration-color:var(--line);text-decoration-thickness:1px;text-underline-offset:3px}
-  .nom:hover{text-decoration-color:var(--green)}
+  input[type=search]{width:100%;font-size:16px;height:46px;padding:0 12px 0 38px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink)}
+  input[type=search]:focus{outline:2px solid var(--green);outline-offset:1px;border-color:transparent}
+  button{cursor:pointer}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink-2);border-radius:var(--radius);padding:11px 14px;font-size:14px;font-weight:600;width:100%}
+  .btn:active{transform:translateY(1px)}
   .ic{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  .buscar .ico{display:flex;align-items:center}
 
-  /* ---------- partido: fila de prensa deportiva ----------
-     Sin caja por partido. La hora manda a la izquierda, los nombres se apilan
-     (así los nombres largos y las parejas de dobles dejan de apretarse) y las
-     filas se separan con una línea fina. */
-  .m{display:grid;grid-template-columns:66px minmax(0,1fr);gap:14px;padding:13px 0;border-top:1px solid var(--line-2)}
+  /* buscador */
+  .buscar{position:relative;margin-bottom:6px}
+  .buscar .lupa{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3);display:flex}
+  .sug{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:6px}
+  .sug button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:0;border-bottom:1px solid var(--line-2);background:none;text-align:left}
+  .sug button:last-child{border-bottom:0}
+  .sug button:hover{background:var(--green-soft)}
+  .sug .n{font-size:15px;font-weight:600;min-width:0}
+  .sug .n small{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500}
+  .sug mark{background:none;color:var(--green-2);font-weight:800}
+
+  /* filas de partido */
+  .m{display:grid;grid-template-columns:64px minmax(0,1fr);gap:13px;padding:13px 0;border-top:1px solid var(--line-2)}
   .m:first-child{border-top:0}
-  .m-hora{min-width:0}
-  .m-hora b{display:block;font-size:21px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.1}
-  .m-hora span{display:block;font-size:11.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
-  .m-hora .cd{color:var(--signal);font-weight:700}
-  .m-hora .tbd{font-size:13px;font-weight:700;color:var(--ink-3);letter-spacing:0}
-  .m-cuerpo{min-width:0}
-  .m-cat{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-3);margin-bottom:3px}
-  .m-cat b{color:var(--green-2);font-weight:700}
-  .p{font-size:16.5px;font-weight:600;letter-spacing:-.012em;line-height:1.42;min-width:0;overflow-wrap:break-word}
+  .m-izq b{display:block;font-size:20px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .m-izq span{display:block;font-size:11.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
+  .m-izq .cd{color:var(--signal);font-weight:700}
+  .m-izq .sin{font-size:13px;font-weight:700;color:var(--ink-3)}
+  .m-cat{font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:var(--ink-3);margin-bottom:3px}
+  .m-cat b{color:var(--green-2)}
+  .p{font-size:16.5px;font-weight:600;letter-spacing:-.012em;line-height:1.42;overflow-wrap:break-word}
   .p.b{color:var(--ink-2)}
+  .p.gana{font-weight:800}
   .p.tbd{color:var(--ink-3);font-weight:500;font-style:italic;font-size:15px}
   .p .loc{font-size:12px;color:var(--ink-3);font-weight:500;margin-left:6px}
-  .p.win{color:var(--ink);font-weight:800}
-  .p .yo{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:99px;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.06em;vertical-align:2px}
-  .x{display:none}
-  .m.live .m-hora b{color:var(--signal)}
   .m.live{background:var(--signal-soft);border-radius:var(--radius);padding:13px 12px;margin:5px 0;border-top:0}
-  .m.mine .m-cuerpo{box-shadow:-11px 0 0 -9px var(--green)}
-  .score{font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--ink-2);margin-top:4px}
-  .badge{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--ink-3);white-space:nowrap}
-  .badge.now{color:var(--signal);text-transform:uppercase}
+  .m.live .m-izq b{color:var(--signal)}
+  .marca-set{font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--ink-2);margin-top:4px}
+  .nom{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+  .nom:hover{text-decoration-color:var(--green-2)}
 
-  /* ---------- agrupadores de día ---------- */
-  .day{margin:22px 0 2px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--ink-2)}
-
-  /* ---------- listas ---------- */
+  /* listas y tarjetas */
   .lista{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:8px}
-  .li{display:flex;align-items:center;gap:11px;width:100%;padding:12px 13px;border:0;border-bottom:1px solid var(--line-2);background:none;text-align:left;font-size:15px;color:var(--ink);cursor:pointer}
+  .li{display:flex;align-items:center;gap:11px;width:100%;padding:13px;border:0;border-bottom:1px solid var(--line-2);background:none;text-align:left;font-size:15px;color:var(--ink)}
   .li:last-child{border-bottom:0}
   .li:hover{background:var(--green-soft)}
-  .li .nm{font-weight:600;min-width:0}
+  .li .nm{font-weight:600;min-width:0;flex:1}
   .li .nm small{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500}
-  .li .meta{margin-left:auto;font-size:12px;color:var(--ink-3);text-align:right;white-space:nowrap}
-  .li .chev{color:var(--ink-3);font-size:15px}
-  .pos{width:26px;text-align:right;font-variant-numeric:tabular-nums;font-weight:800;color:var(--ink-3);font-size:13px}
-  .pts{font-variant-numeric:tabular-nums;font-weight:800;font-size:15px}
-  .medals{display:flex;gap:8px;font-size:13px;font-weight:700;color:var(--ink-2)}
+  .li .meta{font-size:12.5px;color:var(--ink-3);text-align:right;white-space:nowrap}
+  .li .pos{width:28px;text-align:right;font-variant-numeric:tabular-nums;font-weight:800;color:var(--ink-3);font-size:13.5px}
+  .li .pts{font-variant-numeric:tabular-nums;font-weight:800;font-size:15.5px}
+  .li.top .pos{color:var(--oro)}
+  .li.top{background:var(--oro-soft)}
+  .cards{display:grid;grid-template-columns:1fr;gap:9px;margin-top:8px}
+  @media (min-width:560px){ .cards{grid-template-columns:1fr 1fr} }
+  .card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px}
+  .card:hover{border-color:var(--green-2)}
+  .card .t{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-3)}
+  .card .n{font-size:17px;font-weight:800;letter-spacing:-.02em;margin-top:3px}
+  .card .d{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .card .l{display:flex;align-items:baseline;gap:7px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line-2)}
+  .card .l b{font-size:15px;font-weight:700}
+  .card .l span{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:15px}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{white-space:nowrap;padding:8px 13px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13.5px;font-weight:600;color:var(--ink-2)}
+  .chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+  .dia{margin:20px 0 2px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--ink-2)}
 
-  /* ---------- ficha jugador ---------- */
-  .ficha{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:14px}
-  .ficha h3{margin:0;font-size:21px;font-weight:800;font-variation-settings:'wdth' 108;letter-spacing:-.02em}
-  .ficha .loc2{color:var(--ink-3);font-size:13px;margin-top:2px}
-  .ficha .big{display:flex;gap:18px;margin-top:12px}
-  .ficha .big div{text-align:center}
-  .ficha .big b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
-  .ficha .big span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
-  .volver{margin-bottom:12px}
+  /* llaves */
+  .rondas{display:flex;align-items:center;gap:8px;margin:10px 0 4px}
+  .rondas .nomr{flex:1;text-align:center;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .flecha{width:38px;height:38px;border-radius:99px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+  .flecha[disabled]{opacity:.35}
+  .cuadro{overflow-x:auto;padding:4px 0 10px;-webkit-overflow-scrolling:touch}
+  .cuadro-in{display:flex;gap:14px;min-width:min-content}
+  .col{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:172px}
+  .col .rot{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--ink-3);text-align:center}
+  .cruce{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 9px;font-size:13px}
+  .cruce div{display:flex;gap:6px;align-items:baseline}
+  .cruce div b{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink-3);font-weight:700;font-size:12px}
+  .cruce .g{font-weight:800}
+  .cruce .l2{color:var(--ink-3)}
+  table.pos{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  table.pos th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);text-align:right;padding:9px 8px;border-bottom:1px solid var(--line)}
+  table.pos th:first-child{text-align:left}
+  table.pos td{padding:10px 8px;border-bottom:1px solid var(--line-2);text-align:right;font-variant-numeric:tabular-nums}
+  table.pos td:first-child{text-align:left;font-weight:600}
+  table.pos tr:last-child td{border-bottom:0}
 
-  footer{margin-top:30px;padding-top:15px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);line-height:1.6}
-  footer a{color:var(--green)}
-  @media print{
-    header,nav.tabs,.me,.chips,.no-print{display:none!important}
-    body{background:#fff} .m{break-inside:avoid;box-shadow:none} .wrap{padding-bottom:0}
-  }
+  /* perfil */
+  .ficha{display:flex;gap:13px;align-items:center;margin:16px 0 4px}
+  .ficha .foto{width:66px;height:66px;border-radius:50%;object-fit:cover;background:var(--green-soft);flex:none}
+  .ficha .ini{width:66px;height:66px;border-radius:50%;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex:none}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px}
+  .kpi b{display:block;font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .kpi span{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+  .barras{display:flex;align-items:flex-end;gap:6px;height:78px;margin-top:10px}
+  .barras div{flex:1;background:var(--green-soft);border-radius:4px 4px 0 0;position:relative;min-height:3px}
+  .barras div b{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10.5px;font-weight:700;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .barras div i{position:absolute;bottom:-17px;left:-6px;right:-6px;text-align:center;font-size:9.5px;font-style:normal;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .barras-pie{height:20px}
+
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3);line-height:1.65}
+  footer a{color:var(--green-2)}
+  footer b{color:var(--ink-2);font-weight:700}
 </style>
 </head>
 <body>
-<header>
-  <div class="hd">
-    <div class="kicker"><span class="dot" id="dot"></span><span id="estado">Cargando</span></div>
-    <h1 id="torneo">Racquetball Chile</h1>
-    <div class="sub">
-      <span id="sede"></span><span id="fechas"></span><span>Actualizado <b id="upd">—</b></span>
-    </div>
-    <select id="torneoSel" hidden aria-label="Elegir fecha del circuito"></select>
-  </div>
-</header>
-
-<div class="wrap"><div id="aviso"></div><main id="app"><div class="skel"></div><div class="skel"></div></main>
-  <footer>
-    <button onclick="window.print()" class="no-print" style="margin-bottom:12px">Imprimir esta vista</button><br>
-    Datos tomados de <a href="#" id="fuente" target="_blank" rel="noopener">r2sports.com</a>, la plataforma oficial del torneo.
-    Los horarios los publica la organización y pueden cambiar sin aviso: la hora es la del recinto.
-    <span id="disc"></span>
-  </footer>
+<header><div class="hd" id="hd"></div></header>
+<div class="wrap"><main id="app"></main>
+  <footer id="pie"></footer>
 </div>
-
 <nav class="tabs"><div class="tabs-in" id="tabs"></div></nav>
 
 <script>
@@ -186,15 +176,10 @@ const esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, 
 const qs = new URLSearchParams(location.search);
 
 /* ---------- estado ---------- */
-let TID = qs.get('tid') || '54324';
-// MI es el UID, no el nombre: hay homónimos reales (Rodrigo Salgado Jr. es 96164
-// y su papá, Rodrigo Salgado I., es 626220). Buscar por texto los mezclaba.
-let MI = qs.get('jugador') || localStorage.getItem('rq.uid') || '';
-if (MI) localStorage.setItem('rq.uid', MI);
-let T = null, CAT = null, JUG = null, RANK = null, HIST = null, TNOM = null;
-let VISTA = (location.hash || '#ahora').slice(1).split('/')[0];
-let FILTRO_DIV = 'todo', DIA = 'todo', BUSCA = '', TODOS_RES = false;
-let DIV_ABIERTA = null, JUG_ABIERTO = null, RANK_CAT = null, RANK_ANIO = 'oficial';
+let RUTA = { vista: 'inicio' };     // {vista, tid, cat, uid, sub}
+let T = null;                        // torneo abierto
+let CAT = null, JUG = null, RK = null, HIST = null, TNOM = null;
+let DIA = 'todo', RONDA = 0, CUADRO = false;
 
 /* ---------- fechas ---------- */
 const DIAS = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -204,14 +189,40 @@ function mdy(s) { const m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})
 function rangoEs(a, b) {
   const i = mdy(a), f = mdy(b);
   if (!i) return '';
-  if (!f || +i === +f) return i.getDate() + ' de ' + MES_ES[i.getMonth()] + ' de ' + i.getFullYear();
-  if (i.getMonth() === f.getMonth()) return i.getDate() + ' al ' + f.getDate() + ' de ' + MES_ES[i.getMonth()] + ' de ' + f.getFullYear();
-  return i.getDate() + ' de ' + MES_ES[i.getMonth()] + ' al ' + f.getDate() + ' de ' + MES_ES[f.getMonth()] + ' de ' + f.getFullYear();
+  if (!f || +i === +f) return i.getDate() + ' ' + MES_ES[i.getMonth()].slice(0, 3) + ' ' + i.getFullYear();
+  if (i.getMonth() === f.getMonth()) return i.getDate() + '-' + f.getDate() + ' ' + MES_ES[i.getMonth()].slice(0, 3) + ' ' + f.getFullYear();
+  return i.getDate() + ' ' + MES_ES[i.getMonth()].slice(0, 3) + ' - ' + f.getDate() + ' ' + MES_ES[f.getMonth()].slice(0, 3) + ' ' + f.getFullYear();
 }
-// "Saturday" + "7:40:00 PM" -> fecha real dentro del rango del torneo
-function fechaDe(day, time) {
-  if (!day || !time || !T) return null;
-  const ini = mdy(T.tournament.startDate), fin = mdy(T.tournament.endDate);
+function hhmm(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function haceCuanto(iso) {
+  const d = new Date(iso), min = Math.round((Date.now() - d) / 60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return 'hace ' + min + ' min';
+  const h = Math.round(min / 60);
+  if (h < 24) return 'hace ' + h + (h === 1 ? ' hora' : ' horas');
+  const dias = Math.round(h / 24);
+  return dias < 30 ? 'hace ' + dias + (dias === 1 ? ' día' : ' días') : 'el ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+}
+function faltan(d) {
+  const min = Math.round((d - Date.now()) / 60000);
+  if (min < 0) return null;
+  if (min < 60) return 'en ' + min + ' min';
+  const h = Math.floor(min / 60), r = min % 60;
+  return 'en ' + h + ' h' + (r ? ' ' + r : '');
+}
+// r2sports pone nombres larguísimos: "Torneo Nacional Junior - Clasificatorio
+// adulto". Se corta en el guión y se le agrega el año.
+function nombreCorto(nombre, fecha) {
+  let s = String(nombre || '').replace(/\s*[-–]\s*.*$/, '').trim();
+  s = s.replace(/^(torneo|campeonato)\s+/i, '').replace(/\s*\d{4}\s*$/, '').trim();
+  s = s.replace(/\b([A-ZÁÉÍÓÚÑ]{4,})\b/g, function (w) { return w[0] + w.slice(1).toLowerCase(); });
+  const a = (String(fecha || '').match(/\/(\d{4})/) || [])[1];
+  return (s || 'Torneo') + (a ? ' ' + a : '');
+}
+function fechaDe(day, time, torneo) {
+  const t = torneo || T;
+  if (!day || !time || !t) return null;
+  const ini = mdy(t.tournament.startDate), fin = mdy(t.tournament.endDate);
   const wd = DIAS[String(day).trim().toLowerCase()];
   if (!ini || wd == null) return null;
   const tm = String(time).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP])M/i);
@@ -223,799 +234,747 @@ function fechaDe(day, time) {
   d.setHours(h, +tm[2], 0, 0);
   return d;
 }
-function hhmm(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
-function haceCuanto(iso) {
-  const d = new Date(iso), mins = Math.round((Date.now() - d) / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return 'hace ' + mins + ' min';
-  const hs = Math.round(mins / 60);
-  if (hs < 24) return 'hace ' + hs + (hs === 1 ? ' hora' : ' horas');
-  return 'el ' + d.getDate() + '/' + (d.getMonth() + 1) + ' a las ' + hhmm(d);
-}
-function faltan(d) {
-  const min = Math.round((d - Date.now()) / 60000);
-  if (min < 0) return null;
-  if (min < 60) return 'en ' + min + ' min';
-  const h = Math.floor(min / 60), r = min % 60;
-  return 'en ' + h + ' h' + (r ? ' ' + r : '');
-}
 
 /* ---------- jugadores ---------- */
 const PLACEHOLDER = /^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^\s*$/i;
 function esReal(n) { return !PLACEHOLDER.test(String(n || '')); }
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
-function ladosDe(m) { return (m.lado1 || []).concat(m.lado2 || []); }
-function esMio(m) {
-  if (!MI) return false;
-  const l = ladosDe(m);
-  if (l.length) return l.some(function (x) { return x.uid === MI; });
-  const p = jugador(MI);
-  return p ? (norm(m.p1).indexOf(norm(p.name)) >= 0 || norm(m.p2).indexOf(norm(p.name)) >= 0) : false;
+function jugadores() { return (JUG && JUG.jugadores) || []; }
+function porUid(uid) { return jugadores().find(function (j) { return j.uid === String(uid); }) || null; }
+function porNombre(n) {
+  const k = norm(n);
+  return jugadores().find(function (j) { return (j.alias || []).some(function (a) { return norm(a) === k; }); }) || null;
 }
-function jugador(uid) { return ((T && T.players) || []).find(function (p) { return p.uid === uid; }) || null; }
-function tieneUid(m, uid) {
-  const l = ladosDe(m);
-  if (l.length) return l.some(function (x) { return x.uid === uid; });
-  return false;
+function foto(j) {
+  if (!j || !j.uid) return null;
+  return 'https://www.r2sports.com/tourney/imageGallery/gallery/player/' + j.uid + '_large.jpg';
 }
-function partidosDe(uid) {
-  return ((T && T.matches) || []).filter(function (m) {
-    return (m.ganador && m.ganador.uid === uid) || (m.perdedor && m.perdedor.uid === uid);
+function iniciales(n) { return String(n || '?').split(' ').filter(Boolean).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase(); }
+
+/* ---------- navegación ---------- */
+function ir(r, reemplazar) {
+  RUTA = Object.assign({ vista: 'inicio' }, r);
+  const h = '#' + [RUTA.vista, RUTA.tid, RUTA.cat, RUTA.uid].filter(Boolean).map(encodeURIComponent).join('/');
+  if (reemplazar) history.replaceState(null, '', h); else history.pushState(null, '', h);
+  RONDA = 0; CUADRO = false;
+  pintar(); window.scrollTo(0, 0);
+}
+function leerHash() {
+  const p = (location.hash || '#inicio').slice(1).split('/').map(decodeURIComponent);
+  const v = p[0] || 'inicio';
+  if (v === 'jugador') return { vista: 'jugador', uid: p[1] };
+  if (v === 'campeonato') return { vista: 'campeonato', tid: p[1], cat: p[2] };
+  return { vista: v };
+}
+const TABS = [
+  ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>'],
+  ['campeonatos', 'Campeonatos', '<path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M12 12v4M8 20h8"/><path d="M16 5h3v2a3 3 0 0 1-3 3M8 5H5v2a3 3 0 0 0 3 3"/>'],
+  ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>'],
+  ['ranking', 'Ranking', '<path d="M5 20V11M12 20V4M19 20v-7"/>']
+];
+function pintarTabs() {
+  const c = $('#tabs'); c.innerHTML = '';
+  const activa = { jugador: 'jugadores', campeonato: 'campeonatos' }[RUTA.vista] || RUTA.vista;
+  TABS.forEach(function (t) {
+    const b = el('button', 'tab', '<svg viewBox="0 0 24 24" aria-hidden="true">' + t[2] + '</svg>' + t[1]);
+    b.setAttribute('aria-current', activa === t[0]);
+    b.onclick = function () { ir({ vista: t[0] }); };
+    c.appendChild(b);
   });
 }
-// Nombre del torneo a partir del TID: primero el catálogo, después la tabla de
-// nombres que arma el crawl del histórico, y si no hay nada, el número pelado.
-function nombreTorneo(tid) {
-  const c = ((CAT && CAT.tournaments) || []).find(function (t) { return String(t.tid) === String(tid); });
-  if (c) return c.name;
-  const n = TNOM && TNOM.torneos && TNOM.torneos[tid];
-  return (n && n.name) || ('Torneo ' + tid);
-}
-// Carrera de un jugador desde data/historico.json, ya normalizada al punto de vista
-// de ese jugador: gané o perdí, contra quién y con qué marcador.
-function carreraDe(uid) {
-  const P = (HIST && HIST.partidos) || [];
-  const out = [];
-  P.forEach(function (m) {
-    const gan = m.ganador || [], per = m.perdedor || [];
-    const enGan = gan.some(function (x) { return x.uid === uid; });
-    const enPer = per.some(function (x) { return x.uid === uid; });
-    if (!enGan && !enPer) return;
-    const d = m.date ? new Date(m.date) : null;
-    out.push({
-      gane: enGan,
-      rivales: enGan ? per : gan,
-      companeros: (enGan ? gan : per).filter(function (x) { return x.uid !== uid; }),
-      marcador: m.marcador || '', torneo: nombreTorneo(m.tid), tid: m.tid,
-      fecha: d, fechaTxt: d && !isNaN(d) ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : (m.date || '')
-    });
-  });
-  return out.sort(function (a, b) { return (b.fecha || 0) - (a.fecha || 0); });
+function pintarHeader() {
+  const hd = $('#hd'); hd.innerHTML = '';
+  const detalle = RUTA.vista === 'jugador' || RUTA.vista === 'campeonato';
+  if (detalle) {
+    const a = el('button', 'atras', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>');
+    a.setAttribute('aria-label', 'Volver');
+    a.onclick = function () { history.back(); };
+    hd.appendChild(a);
+  }
+  const m = el('button', 'marca', '<span class="pelota"></span><b>Racquetball Chile</b>');
+  m.setAttribute('aria-label', 'Ir al inicio');
+  m.onclick = function () { ir({ vista: 'inicio' }); };
+  hd.appendChild(m);
+
+  const ctx = el('div', 'ctx');
+  const activo = torneoActivo();
+  if (RUTA.vista === 'campeonato' && T) {
+    ctx.innerHTML = '<b>' + esc(nombreCorto(T.tournament.name, T.tournament.startDate)) + '</b>' + esc(rangoEs(T.tournament.startDate, T.tournament.endDate));
+  } else if (activo) {
+    ctx.innerHTML = '<span class="vivo"><i></i>en juego</span><br>' + esc(nombreCorto(activo.name, activo.startDate));
+  } else if (RK && RK.corte) {
+    ctx.innerHTML = 'ranking oficial<br>' + esc(RK.corte.etiqueta);
+  }
+  hd.appendChild(ctx);
 }
 
-/* ---------- tarjetas ---------- */
-// Todo nombre con uid es un enlace a su perfil. Los "Winner Semis" o "Grupo 1 - 2do"
-// no tienen uid y quedan como texto plano.
-function abrirPerfil(uid) {
-  if (!uid) return;
-  JUG_ABIERTO = uid; VISTA = 'jugadores';
-  history.replaceState(null, '', '#jugadores');
-  render(); window.scrollTo(0, 0);
+/* ---------- catálogo de campeonatos ---------- */
+// El estado se calcula acá y no se lee del archivo: el que viene guardado quedó
+// congelado el día que se generó, así que en septiembre un torneo de julio seguía
+// apareciendo como "jugándose ahora".
+function estadoDe(t) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const i = mdy(t.startDate), f = mdy(t.endDate) || i;
+  if (!i) return t.status || 'finished';
+  if (f && f < hoy) return 'finished';
+  if (i > hoy) return 'upcoming';
+  return 'in-progress';
 }
+function catalogo() {
+  const t = ((CAT && CAT.tournaments) || []).slice().map(function (x) {
+    return Object.assign({}, x, { estado: estadoDe(x) });
+  });
+  t.sort(function (a, b) { return String(b.dateKey || '').localeCompare(String(a.dateKey || '')); });
+  return t;
+}
+function torneoActivo() { return catalogo().find(function (x) { return x.estado === 'in-progress'; }) || null; }
+function ultimoJugado() { return catalogo().find(function (x) { return x.estado === 'finished'; }) || catalogo()[0] || null; }
+
+/* ---------- piezas ---------- */
 function nodoJugadores(lista, textoPlano, extra) {
   const wrap = el('span');
   const usa = (lista || []).filter(function (x) { return x && x.name; });
-  if (!usa.length) { wrap.innerHTML = esc(textoPlano || 'Por definir'); }
+  if (!usa.length) wrap.innerHTML = esc(textoPlano || 'Por definir');
   else usa.forEach(function (x, i) {
     if (i) wrap.appendChild(document.createTextNode(' / '));
-    if (x.uid) {
+    const reg = x.uid ? porUid(x.uid) : porNombre(x.name);
+    const uid = (reg && reg.uid) || x.uid;
+    if (uid) {
       const b = el('button', 'nom', esc(x.name));
       b.setAttribute('aria-label', 'Ver el perfil de ' + x.name);
-      b.onclick = function (e) { e.stopPropagation(); abrirPerfil(x.uid); };
+      b.onclick = function (e) { e.stopPropagation(); ir({ vista: 'jugador', uid: uid }); };
       wrap.appendChild(b);
     } else wrap.appendChild(document.createTextNode(x.name));
   });
-  if (MI && usa.some(function (x) { return x.uid === MI; })) wrap.appendChild(el('span', 'yo', 'TÚ'));
   if (extra) wrap.appendChild(el('span', 'loc', esc(extra)));
   return wrap;
 }
-// Fila: hora a la izquierda, categoría y los dos nombres apilados a la derecha.
-// opts.dia = false cuando la lista ya está agrupada por día (no repetir "domingo").
-function cardPartido(m, opts) {
+function filaPartido(m, opts) {
   opts = opts || {};
-  const d = fechaDe(m.day, m.time), mine = esMio(m);
-  const c = el('div', 'm' + (opts.live ? ' live' : '') + (mine ? ' mine' : ''));
-
-  const hora = el('div', 'm-hora');
+  const d = fechaDe(m.day, m.time);
+  const c = el('div', 'm' + (opts.live ? ' live' : ''));
+  const izq = el('div', 'm-izq');
   if (d) {
-    hora.appendChild(el('b', null, hhmm(d)));
-    if (opts.live) hora.appendChild(el('span', 'cd', 'en cancha'));
+    izq.appendChild(el('b', null, hhmm(d)));
+    if (opts.live) izq.appendChild(el('span', 'cd', 'en cancha'));
     else {
-      const f = faltan(d);
-      const cerca = f && (d - Date.now()) < 90 * 60000;
-      hora.appendChild(el('span', cerca ? 'cd' : null, opts.dia === false ? (f || DIA_ES[d.getDay()]) : DIA_ES[d.getDay()] + (cerca ? ' · ' + f : '')));
+      const f = faltan(d), cerca = f && (d - Date.now()) < 90 * 60000;
+      izq.appendChild(el('span', cerca ? 'cd' : null, opts.dia === false ? (f || DIA_ES[d.getDay()]) : DIA_ES[d.getDay()]));
     }
-  } else {
-    hora.appendChild(el('span', 'tbd', 'Sin hora'));
-  }
-  c.appendChild(hora);
-
-  const cuerpo = el('div', 'm-cuerpo');
+  } else izq.appendChild(el('span', 'sin', 'Sin hora'));
+  c.appendChild(izq);
+  const cu = el('div');
   const cat = el('div', 'm-cat');
   cat.appendChild(el('b', null, esc(m.division)));
   if (m.round) cat.appendChild(document.createTextNode(' · ' + m.round));
-  cuerpo.appendChild(cat);
+  cu.appendChild(cat);
   const a = el('div', 'p' + (esReal(m.p1) ? '' : ' tbd')); a.appendChild(nodoJugadores(m.lado1, m.p1));
   const b = el('div', 'p b' + (esReal(m.p2) ? '' : ' tbd')); b.appendChild(nodoJugadores(m.lado2, m.p2));
-  cuerpo.appendChild(a); cuerpo.appendChild(b);
-  if (opts.live && d) cuerpo.appendChild(el('div', 'badge now', 'debió empezar ' + haceCuanto(d.toISOString())));
-  if (!d) cuerpo.appendChild(el('div', 'badge', 'La organización aún no la fija'));
-  c.appendChild(cuerpo);
+  cu.appendChild(a); cu.appendChild(b);
+  if (opts.live && d) cu.appendChild(el('div', 'marca-set', 'debió empezar ' + haceCuanto(d.toISOString())));
+  c.appendChild(cu);
   return c;
 }
-// Misma fila que un partido por jugar, pero a la izquierda va el marcador en vez
-// de la hora. El ganador arriba y en negrita: no hace falta decir "def.".
-function cardResultado(m, opts) {
+function filaResultado(m, opts) {
   opts = opts || {};
   const c = el('div', 'm');
-  const g = m.ganador || {}, p = m.perdedor || {};
-
-  const izq = el('div', 'm-hora');
-  // games viene como [{w,l}] con el puntaje del ganador del PARTIDO primero, así que
-  // un set donde w<l es un set que perdió: contarlos, no contar cuántos sets hubo.
   const gs = m.games || [];
   const gana = gs.filter(function (x) { return x.w > x.l; }).length;
   const pierde = gs.filter(function (x) { return x.l > x.w; }).length;
-  if (gs.length) {
-    izq.appendChild(el('b', null, gana + '-' + pierde));
-    izq.appendChild(el('span', null, gs.length === 1 ? 'set' : 'sets'));
-  } else if (m.forfeit) {
-    izq.appendChild(el('span', 'tbd', 'W.O.'));
-  } else izq.appendChild(el('span', 'tbd', 'Jugado'));
+  const izq = el('div', 'm-izq');
+  if (gs.length) { izq.appendChild(el('b', null, gana + '-' + pierde)); izq.appendChild(el('span', null, gs.length === 1 ? 'set' : 'sets')); }
+  else izq.appendChild(el('span', 'sin', m.forfeit ? 'W.O.' : 'jugado'));
   c.appendChild(izq);
-
-  const cuerpo = el('div', 'm-cuerpo');
+  const cu = el('div');
   const cat = el('div', 'm-cat');
   cat.appendChild(el('b', null, esc(m.division)));
   if (m.round) cat.appendChild(document.createTextNode(' · ' + m.round));
   if (opts.badge) cat.appendChild(document.createTextNode(' · ' + opts.badge));
-  cuerpo.appendChild(cat);
-  const dg = el('div', 'p win'); dg.appendChild(nodoJugadores([g], g.name || '—', g.loc || ''));
+  cu.appendChild(cat);
+  const g = m.ganador || {}, p = m.perdedor || {};
+  const dg = el('div', 'p gana'); dg.appendChild(nodoJugadores([g], g.name || '—', g.loc || ''));
   const dp = el('div', 'p b'); dp.appendChild(nodoJugadores([p], p.name || '—', p.loc || ''));
-  cuerpo.appendChild(dg); cuerpo.appendChild(dp);
-  if (m.marcador) cuerpo.appendChild(el('div', 'score', esc(m.marcador)));
-  else if (m.forfeit) cuerpo.appendChild(el('div', 'score', 'Sin presentación'));
-  c.appendChild(cuerpo);
+  cu.appendChild(dg); cu.appendChild(dp);
+  if (m.marcador) cu.appendChild(el('div', 'marca-set', esc(m.marcador)));
+  else if (m.forfeit) cu.appendChild(el('div', 'marca-set', 'Sin presentación'));
+  c.appendChild(cu);
   return c;
 }
-function h2(titulo, extra) {
-  const h = el('div', 'h2');
-  h.appendChild(el('span', null, esc(titulo)));
-  if (extra) h.appendChild(el('em', null, esc(extra)));
-  return h;
-}
-
-/* ---------- clasificación de horarios ---------- */
-function clasificar() {
-  const now = Date.now(), live = [], next = [], sinHora = [];
-  ((T && T.schedule) || []).forEach(function (m) {
-    const d = fechaDe(m.day, m.time);
-    if (!d) { sinHora.push(m); return; }
-    // Un partido de racquetball rara vez pasa de una hora: si su horario quedó atrás
-    // menos de 75 min y el resultado no está cargado, se asume en cancha.
-    const min = (now - d) / 60000;
-    if (min >= 0 && min <= 75) live.push(m); else if (d > now) next.push(m); else sinHora.push(m);
-  });
-  const porHora = function (a, b) { return fechaDe(a.day, a.time) - fechaDe(b.day, b.time); };
-  next.sort(porHora); live.sort(porHora);
-  return { live: live, next: next, sinHora: sinHora };
-}
-
-/* ---------- iconos (SVG propio: sin depender de una fuente externa que en el
-     recinto, con mala señal, puede no cargar) ---------- */
-const ICONOS = {
-  buscar: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/>',
-  cambiar: '<circle cx="10" cy="8" r="3.2"/><path d="M4 19c1-3 3.2-4.6 6-4.6 1 0 1.9.2 2.7.6"/><path d="M17 14v6M14 17h6"/>',
-  compartir: '<path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 16V4M8 8l4-4 4 4"/>',
-  listo: '<path d="M5 13l4.5 4.5L19 7"/>'
-};
-function icono(nombre, clase) {
-  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  s.setAttribute('viewBox', '0 0 24 24');
-  s.setAttribute('aria-hidden', 'true');
-  s.setAttribute('class', 'ic' + (clase ? ' ' + clase : ''));
-  s.innerHTML = ICONOS[nombre] || '';
-  return s;
-}
-
-/* ---------- buscador de jugadores con sugerencias ---------- */
-// Reemplaza al <select>: se escribe y aparecen coincidencias. Primero los inscritos
-// de la fecha, después el resto del circuito marcado como "otra fecha". Cada
-// sugerencia trae ciudad y categoría, que es lo que separa a Rodrigo Salgado Jr.
-// de su papá cuando el nombre no alcanza.
-function buscadorJugadores(opts) {
-  opts = opts || {};
-  const caja = el('div', 'buscar');
-  const lupa = el('span', 'ico'); lupa.appendChild(icono('buscar')); caja.appendChild(lupa);
-  const inp = el('input'); inp.type = 'search'; inp.placeholder = opts.placeholder || 'Escribe tu nombre';
-  inp.autocomplete = 'off'; inp.setAttribute('enterkeyhint', 'search'); inp.value = opts.valor || '';
-  caja.appendChild(inp);
-  const sug = el('div', 'sug'); sug.hidden = true;
+function buscador(placeholder, onPick) {
   const cont = el('div');
-  cont.appendChild(caja); cont.appendChild(sug);
-
-  const deLaFecha = ((T && T.players) || []).map(function (p) {
-    const cats = (p.divisions || []).map(function (d) { return d.divisionEs || d.division; });
-    return { uid: p.uid, name: p.name, place: p.place || '', detalle: [p.place, cats[0]].filter(Boolean).join(' · '), aqui: true };
-  });
-  const yaEstan = {};
-  deLaFecha.forEach(function (p) { yaEstan[p.uid] = true; });
-  const delCircuito = Object.keys((JUG && JUG.players) || {}).filter(function (u) { return !yaEstan[u]; })
-    .map(function (u) {
-      const p = JUG.players[u];
-      const ult = (p.tournaments || [])[p.tournaments.length - 1];
-      return { uid: u, name: p.name, place: p.place || '', detalle: [p.place, ult && ult.year].filter(Boolean).join(' · '), aqui: false };
-    });
-
-  function pintar() {
+  const caja = el('div', 'buscar');
+  caja.appendChild(el('span', 'lupa', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>'));
+  const inp = el('input'); inp.type = 'search'; inp.placeholder = placeholder; inp.autocomplete = 'off';
+  caja.appendChild(inp); cont.appendChild(caja);
+  const sug = el('div'); cont.appendChild(sug);
+  inp.oninput = function () {
     const k = norm(inp.value);
     sug.innerHTML = '';
-    if (k.length < 2) { sug.hidden = true; return; }
-    const calza = function (p) { return norm(p.name + ' ' + p.place).indexOf(k) >= 0; };
-    const orden = function (a, b) {
-      const ia = norm(a.name).indexOf(k), ib = norm(b.name).indexOf(k);
-      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.name.localeCompare(b.name, 'es');
-    };
-    const res = deLaFecha.filter(calza).sort(orden).concat(delCircuito.filter(calza).sort(orden)).slice(0, 8);
-    if (!res.length) {
-      sug.appendChild(el('div', 'note', 'Nadie con ese nombre. Prueba solo con el apellido.'));
-      sug.hidden = false; return;
-    }
-    res.forEach(function (p) {
+    if (k.length < 2) return;
+    const lista = jugadores().filter(function (j) {
+      return (j.alias || [j.nombre]).some(function (a) { return norm(a).indexOf(k) >= 0; }) || norm(j.ciudad).indexOf(k) >= 0;
+    }).sort(function (a, b) {
+      const ia = norm(a.nombre).indexOf(k), ib = norm(b.nombre).indexOf(k);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (b.ranking.length - a.ranking.length) || a.nombre.localeCompare(b.nombre, 'es');
+    }).slice(0, 8);
+    if (!lista.length) { sug.appendChild(el('div', 'nota', 'Nadie con ese nombre. Prueba con el apellido.')); return; }
+    const caja2 = el('div', 'sug');
+    lista.forEach(function (j) {
       const b = el('button');
       const re = new RegExp('(' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'i');
-      const marcado = esc(p.name).replace(re, '<mark>$1</mark>');
-      b.appendChild(el('span', 'n', marcado + '<small>' + esc(p.detalle || 'Sin ciudad') + '</small>'));
-      if (!p.aqui) b.appendChild(el('span', 'fuera', 'otra fecha'));
-      b.onclick = function () { opts.onPick(p.uid); };
-      sug.appendChild(b);
+      const mejor = j.ranking.slice().sort(function (x, y) { return x.puesto - y.puesto; })[0];
+      b.appendChild(el('span', 'n', esc(j.nombre).replace(re, '<mark>$1</mark>') +
+        '<small>' + esc([j.ciudad, mejor ? mejor.puesto + 'º ' + mejor.categoria : ''].filter(Boolean).join(' · ') || 'sin ciudad') + '</small>'));
+      b.onclick = function () { onPick(j); };
+      caja2.appendChild(b);
     });
-    sug.hidden = false;
-  }
-  inp.oninput = pintar;
-  if (opts.valor) pintar();
-  return { nodo: cont, input: inp };
+    sug.appendChild(caja2);
+  };
+  return cont;
 }
 
-/* ================= VISTA: AHORA ================= */
-function vAhora(app) {
-  const g = clasificar();
-  const yo = MI ? jugador(MI) : null;
-  const hist = MI && JUG && JUG.players ? JUG.players[MI] : null;
+/* ================= INICIO ================= */
+function vInicio(app) {
+  const activo = torneoActivo();
+  app.appendChild(el('h1', null, activo ? 'Hay torneo jugándose' : 'Circuito Nacional'));
+  app.appendChild(el('div', 'sub', activo
+    ? nombreCorto(activo.name, activo.startDate) + ' · ' + rangoEs(activo.startDate, activo.endDate)
+    : 'Ranking oficial, campeonatos y jugadores del racquetball chileno.'));
+  app.appendChild(buscador('Busca un jugador', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
 
-  // ---- hero: una sola pregunta ----
-  const hero = el('div', 'hero');
-  if (!MI) {
-    hero.appendChild(el('h2', null, '¿Cuándo juegas?'));
-    const b = buscadorJugadores({
-      onPick: function (uid) { MI = uid; localStorage.setItem('rq.uid', uid); render(); window.scrollTo(0, 0); }
-    });
-    hero.appendChild(b.nodo);
-    hero.appendChild(el('div', 'note', 'Escribe tu nombre o apellido. Queda guardado en este teléfono, no se manda a ninguna parte.'));
+  if (activo && T && String(T.tid) === String(activo.tid)) {
+    const g = clasificar(T);
+    if (g.live.length) {
+      app.appendChild(el('h2', null, 'En cancha ahora'));
+      g.live.forEach(function (m) { app.appendChild(filaPartido(m, { live: true })); });
+      app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo. "En cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
+    }
+    app.appendChild(el('h2', null, 'Próximos partidos'));
+    if (!g.next.length) app.appendChild(el('div', 'vacio', 'No queda nada por jugar.'));
+    g.next.slice(0, 5).forEach(function (m) { app.appendChild(filaPartido(m)); });
+    if (g.next.length > 5) {
+      const b = el('button', 'btn', 'Ver los ' + g.next.length + ' partidos');
+      b.style.marginTop = '10px';
+      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid }); };
+      app.appendChild(b);
+    }
   } else {
-    const nom = (yo && yo.name) || (hist && hist.name) || 'Jugador';
-    const card = el('div', 'yocard');
-    card.appendChild(el('div', 'av', esc(nom.split(' ').map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase())));
-    const t = el('div', 'txt');
-    t.appendChild(el('b', null, esc(nom)));
-    t.appendChild(el('span', null, esc([(yo && yo.place) || (hist && hist.place), 'ver mi perfil'].filter(Boolean).join(' · '))));
-    t.onclick = function () { abrirPerfil(MI); };
-    t.style.cursor = 'pointer';
-    card.appendChild(t);
-    const cambiar = el('button', 'iconbtn'); cambiar.appendChild(icono('cambiar'));
-    cambiar.setAttribute('aria-label', 'Cambiar de jugador');
-    cambiar.onclick = function () { MI = ''; localStorage.removeItem('rq.uid'); render(); };
-    card.appendChild(cambiar);
-    hero.appendChild(card);
-  }
-  app.appendChild(hero);
-
-  // mis partidos
-  if (MI) {
-    const s = el('section');
-    s.appendChild(h2('Tus partidos', ''));
-    const mios = ((T && T.schedule) || []).filter(esMio)
-      .sort(function (a, b) { return (fechaDe(a.day, a.time) || 8e15) - (fechaDe(b.day, b.time) || 8e15); });
-    if (!yo) s.appendChild(el('div', 'empty', 'Ese jugador no está inscrito en esta fecha.'));
-    else if (!mios.length) {
-      s.appendChild(el('div', 'empty', 'No te quedan partidos por jugar en esta fecha.'));
-      const jugados = partidosDe(MI);
-      if (jugados.length) jugados.slice(0, 3).forEach(function (m) { s.appendChild(cardResultado(m)); });
-    } else mios.forEach(function (m) { s.appendChild(cardPartido(m, { live: g.live.indexOf(m) >= 0 })); });
-    app.appendChild(s);
-  }
-
-  // en cancha
-  if (g.live.length) {
-    const s = el('section');
-    s.appendChild(h2('En cancha ahora', 'estimado por horario'));
-    g.live.forEach(function (m) { s.appendChild(cardPartido(m, { live: true })); });
-    s.appendChild(el('div', 'note', 'r2sports no publica el marcador punto a punto en este torneo. "En cancha" significa que la hora programada ya pasó y el resultado todavía no está cargado.'));
-    app.appendChild(s);
-  }
-
-  // lo que viene (solo los próximos 6, el resto está en Horarios)
-  const s2 = el('section');
-  const prox = g.next.slice(0, 6);
-  s2.appendChild(h2('Lo que viene', g.next.length + ' por jugar'));
-  if (!prox.length) s2.appendChild(el('div', 'empty', 'Nada pendiente por ahora.'));
-  prox.forEach(function (m) { s2.appendChild(cardPartido(m)); });
-  if (g.next.length > prox.length) {
-    const b = el('button', 'no-print', 'Ver los ' + g.next.length + ' partidos');
-    b.style.width = '100%'; b.onclick = function () { irA('horarios'); };
-    s2.appendChild(b);
-  }
-  app.appendChild(s2);
-
-  // últimos resultados
-  const ms = ((T && T.matches) || []).slice();
-  if (ms.length) {
-    const s3 = el('section');
-    s3.appendChild(h2('Resultados', ms.length + ' jugados'));
-    ms.slice(0, 6).forEach(function (m) { s3.appendChild(cardResultado(m)); });
-    const b = el('button', 'no-print', 'Ver todos'); b.style.width = '100%';
-    b.onclick = function () { irA('llaves'); };
-    s3.appendChild(b);
-    app.appendChild(s3);
-  }
-
-  // podios
-  const pods = (((T || {}).results || {}).divisions || []).filter(function (d) { return (d.placements || []).length; });
-  if (pods.length) {
-    const s4 = el('section');
-    s4.appendChild(h2('Podios', pods.length + (pods.length === 1 ? ' división' : ' divisiones')));
-    if (((T || {}).results || {}).derived) s4.appendChild(el('div', 'note', 'La organización aún no publica el resumen oficial: estos podios se deducen de las llaves y pueden cambiar.'));
-    const lista = el('div', 'lista');
-    pods.forEach(function (d) {
-      const pl = d.placements || [];
-      pl.filter(function (p) { return p.rank <= 2; }).forEach(function (p) {
-        const row = el('div', 'li');
-        row.appendChild(el('span', null, p.rank === 1 ? '🥇' : '🥈'));
-        row.appendChild(el('span', 'nm', esc((p.players || []).map(function (x) { return x.name; }).join(' / '))));
-        row.appendChild(el('span', 'meta', esc(d.nameEs || d.name)));
-        lista.appendChild(row);
+    // Sin torneo: la página sigue teniendo sentido.
+    if (RK) {
+      app.appendChild(el('h2', null, 'Líderes del ranking'));
+      const cards = el('div', 'cards');
+      RK.categorias.slice().sort(function (a, b) { return b.conPuntos - a.conPuntos; }).slice(0, 4).forEach(function (c) {
+        cards.appendChild(tarjetaCategoria(c));
       });
-    });
-    s4.appendChild(lista);
-    app.appendChild(s4);
-  }
-}
-
-/* ================= VISTA: HORARIOS ================= */
-function vHorarios(app) {
-  const g = clasificar();
-  const todos = ((T && T.schedule) || []);
-  app.appendChild(h2('Todos los partidos', todos.length + ' por jugar'));
-
-  // filtros: día, división, jugador
-  const dias = [];
-  todos.forEach(function (m) {
-    const d = fechaDe(m.day, m.time); if (!d) return;
-    const k = d.toDateString();
-    if (!dias.some(function (x) { return x.k === k; })) dias.push({ k: k, d: d });
-  });
-  dias.sort(function (a, b) { return a.d - b.d; });
-
-  const cDias = el('div', 'chips');
-  [{ v: 'todo', t: 'Todos los días' }].concat(dias.map(function (x) {
-    return { v: x.k, t: DIA_ES[x.d.getDay()] + ' ' + x.d.getDate() };
-  })).forEach(function (o) {
-    const b = el('button', 'chip', esc(o.t));
-    b.setAttribute('aria-pressed', DIA === o.v);
-    b.onclick = function () { DIA = o.v; render(); };
-    cDias.appendChild(b);
-  });
-  app.appendChild(cDias);
-
-  const buscador = el('input'); buscador.type = 'search'; buscador.placeholder = 'Buscar jugador…'; buscador.value = BUSCA;
-  buscador.oninput = function () { BUSCA = this.value; pintarLista(); };
-  app.appendChild(buscador);
-
-  const divs = Array.from(new Set(todos.map(function (m) { return m.division; }))).sort();
-  const cDivs = el('div', 'chips'); cDivs.style.marginTop = '12px';
-  [['todo', 'Todas las categorías']].concat(divs.map(function (d) { return [d, d]; })).forEach(function (par) {
-    const b = el('button', 'chip', esc(par[1]));
-    b.setAttribute('aria-pressed', FILTRO_DIV === par[0]);
-    b.onclick = function () { FILTRO_DIV = par[0]; render(); };
-    cDivs.appendChild(b);
-  });
-  app.appendChild(cDivs);
-
-  const cont = el('div');
-  app.appendChild(cont);
-
-  function pintarLista() {
-    cont.innerHTML = '';
-    const k = norm(BUSCA);
-    const pasa = function (m) {
-      if (FILTRO_DIV !== 'todo' && m.division !== FILTRO_DIV) return false;
-      if (k && norm(m.p1 + ' ' + m.p2).indexOf(k) < 0) return false;
-      if (DIA !== 'todo') { const d = fechaDe(m.day, m.time); if (!d || d.toDateString() !== DIA) return false; }
-      return true;
-    };
-    const conHora = g.live.concat(g.next).filter(pasa);
-    const sin = g.sinHora.filter(pasa).filter(function (m) { return DIA === 'todo'; });
-    if (!conHora.length && !sin.length) { cont.appendChild(el('div', 'empty', 'Nada que mostrar con estos filtros.')); return; }
-
-    // La hora ya va dentro de cada fila, así que acá solo se agrupa por día.
-    let diaActual = '', grupo = null;
-    conHora.forEach(function (m) {
-      const d = fechaDe(m.day, m.time), dk = d.toDateString();
-      if (dk !== diaActual) {
-        diaActual = dk;
-        cont.appendChild(el('div', 'day', DIA_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MES_ES[d.getMonth()]));
-        grupo = el('div'); cont.appendChild(grupo);
-      }
-      grupo.appendChild(cardPartido(m, { live: g.live.indexOf(m) >= 0, dia: false }));
-    });
-    if (sin.length) {
-      cont.appendChild(el('div', 'day', 'Todavía sin hora'));
-      const gs = el('div'); cont.appendChild(gs);
-      sin.forEach(function (m) { gs.appendChild(cardPartido(m, { dia: false })); });
+      app.appendChild(cards);
+      const b = el('button', 'btn', 'Ver las 10 categorías'); b.style.marginTop = '10px';
+      b.onclick = function () { ir({ vista: 'ranking' }); };
+      app.appendChild(b);
+    }
+    const ult = ultimoJugado();
+    if (ult) {
+      app.appendChild(el('h2', null, 'Campeones de la última fecha'));
+      app.appendChild(el('div', 'sub', nombreCorto(ult.name, ult.startDate) + ' · ' + rangoEs(ult.startDate, ult.endDate)));
+      const box = el('div');
+      box.appendChild(el('div', 'nota', 'Cargando…'));
+      app.appendChild(box);
+      cargarTorneo(ult.tid).then(function (t) {
+        box.innerHTML = '';
+        const pods = podios(t);
+        if (!pods.length) { box.appendChild(el('div', 'vacio', 'Esa fecha todavía no tiene resultados publicados.')); return; }
+        box.appendChild(listaPodios(pods.slice(0, 6), t));
+        const b2 = el('button', 'btn', 'Ver la fecha completa'); b2.style.marginTop = '10px';
+        b2.onclick = function () { ir({ vista: 'campeonato', tid: ult.tid }); };
+        box.appendChild(b2);
+      });
     }
   }
-  pintarLista();
+}
+function clasificar(t) {
+  const now = Date.now(), live = [], next = [], sin = [];
+  ((t && t.schedule) || []).forEach(function (m) {
+    const d = fechaDe(m.day, m.time, t);
+    if (!d) { sin.push(m); return; }
+    const min = (now - d) / 60000;
+    if (min >= 0 && min <= 75) live.push(m); else if (d > now) next.push(m); else sin.push(m);
+  });
+  const orden = function (a, b) { return fechaDe(a.day, a.time, t) - fechaDe(b.day, b.time, t); };
+  live.sort(orden); next.sort(orden);
+  return { live: live, next: next, sin: sin };
+}
+function podios(t) {
+  return (((t || {}).results || {}).divisions || []).filter(function (d) { return (d.placements || []).length; });
+}
+function listaPodios(pods, t) {
+  const lista = el('div', 'lista');
+  pods.forEach(function (d) {
+    (d.placements || []).filter(function (p) { return p.rank <= 2; }).forEach(function (p) {
+      const row = el('div', 'li' + (p.rank === 1 ? ' top' : ''));
+      row.appendChild(el('span', 'pos', p.rank === 1 ? '1º' : '2º'));
+      const nm = el('span', 'nm');
+      nm.appendChild(nodoJugadores(p.players, ''));
+      nm.appendChild(el('small', null, esc(d.nameEs || d.name)));
+      row.appendChild(nm);
+      lista.appendChild(row);
+    });
+  });
+  if (t && ((t.results || {}).derived)) {
+    const n = el('div', 'nota', 'La Federación no publicó el resumen de esta fecha: estos podios salen de las llaves.');
+    const cont = el('div'); cont.appendChild(lista); cont.appendChild(n);
+    return cont;
+  }
+  return lista;
+}
+function tarjetaCategoria(c) {
+  const b = el('button', 'card');
+  b.appendChild(el('div', 't', esc('Ranking oficial')));
+  b.appendChild(el('div', 'n', esc(c.label)));
+  b.appendChild(el('div', 'd', c.conPuntos + ' con puntos de ' + c.total));
+  if (c.lider) {
+    const l = el('div', 'l');
+    l.appendChild(el('b', null, esc(c.lider.nombre)));
+    l.appendChild(el('span', null, String(c.lider.pts)));
+    b.appendChild(l);
+  }
+  b.onclick = function () { ir({ vista: 'ranking', cat: c.key }); };
+  return b;
 }
 
-/* ================= VISTA: LLAVES ================= */
-// Se arma desde los partidos (jugados + programados) y no desde el cuadro de
-// r2sports: el parser de cuadros de round robin devuelve basura (mezcla fechas y
-// códigos de cancha con los jugadores).
+/* ================= CAMPEONATOS ================= */
+function vCampeonatos(app) {
+  app.appendChild(el('h1', null, 'Campeonatos'));
+  const lista = catalogo();
+  if (!lista.length) { app.appendChild(el('div', 'vacio', 'Todavía no hay fechas cargadas.')); return; }
+  let anio = '';
+  lista.forEach(function (t) {
+    if (t.year !== anio) { anio = t.year; app.appendChild(el('h2', null, anio)); }
+    const b = el('button', 'card');
+    b.appendChild(el('div', 't', t.estado === 'in-progress' ? 'jugándose ahora' : t.estado === 'upcoming' ? 'por comenzar' : (t.venue || '').split('-')[0].trim()));
+    b.appendChild(el('div', 'n', esc(nombreCorto(t.name, t.startDate))));
+    b.appendChild(el('div', 'd', rangoEs(t.startDate, t.endDate) + ' · ' + ((t.counts && t.counts.players) || 0) + ' jugadores'));
+    b.onclick = function () { ir({ vista: 'campeonato', tid: t.tid }); };
+    const cont = el('div', 'cards'); cont.appendChild(b);
+    app.appendChild(cont);
+  });
+  const desc = (TNOM && TNOM.torneos) ? Object.keys(TNOM.torneos).length : 0;
+  if (desc) app.appendChild(el('div', 'nota', 'Hay ' + desc + ' torneos más detectados en las carreras de los jugadores, incluidos internacionales, que todavía no están cargados en detalle.'));
+}
+function vCampeonato(app) {
+  if (!T || String(T.tid) !== String(RUTA.tid)) { app.appendChild(el('div', 'nota', 'Cargando la fecha…')); return; }
+  const t = T.tournament || {};
+  app.appendChild(el('h1', null, nombreCorto(t.name, t.startDate)));
+  app.appendChild(el('div', 'sub', [rangoEs(t.startDate, t.endDate), (t.venue || '').split('-')[0].trim()].filter(Boolean).join(' · ')));
+
+  if (RUTA.cat) return llaveCategoria(app, RUTA.cat);
+
+  const g = clasificar(T);
+  const pods = podios(T);
+  if (pods.length) {
+    app.appendChild(el('h2', null, 'Podios'));
+    app.appendChild(listaPodios(pods, T));
+  }
+  if (g.live.length || g.next.length) {
+    app.appendChild(el('h2', null, 'Agenda'));
+    const dias = [];
+    g.live.concat(g.next).forEach(function (m) {
+      const d = fechaDe(m.day, m.time, T); if (!d) return;
+      const k = d.toDateString();
+      if (!dias.some(function (x) { return x.k === k; })) dias.push({ k: k, d: d });
+    });
+    dias.sort(function (a, b) { return a.d - b.d; });
+    if (dias.length > 1) {
+      const chips = el('div', 'chips');
+      [{ v: 'todo', t: 'Todos los días' }].concat(dias.map(function (x) { return { v: x.k, t: DIA_ES[x.d.getDay()] + ' ' + x.d.getDate() }; }))
+        .forEach(function (o) {
+          const b = el('button', 'chip', esc(o.t));
+          b.setAttribute('aria-pressed', DIA === o.v);
+          b.onclick = function () { DIA = o.v; pintar(); };
+          chips.appendChild(b);
+        });
+      app.appendChild(chips);
+    }
+    let dia = '';
+    g.live.concat(g.next).filter(function (m) {
+      if (DIA === 'todo') return true;
+      const d = fechaDe(m.day, m.time, T);
+      return d && d.toDateString() === DIA;
+    }).forEach(function (m) {
+      const d = fechaDe(m.day, m.time, T), dk = d ? d.toDateString() : '';
+      if (dk && dk !== dia) { dia = dk; app.appendChild(el('div', 'dia', DIA_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MES_ES[d.getMonth()])); }
+      app.appendChild(filaPartido(m, { live: g.live.indexOf(m) >= 0, dia: false }));
+    });
+  }
+
+  const cats = categoriasDelTorneo(T);
+  app.appendChild(el('h2', null, 'Llaves'));
+  if (!cats.length) app.appendChild(el('div', 'vacio', 'Todavía no hay partidos publicados.'));
+  else {
+    const lista = el('div', 'lista');
+    cats.forEach(function (c) {
+      const b = el('button', 'li');
+      b.appendChild(el('span', 'nm', esc(c.nombre) + '<small>' + c.jugados.length + ' jugados · ' + c.pendientes.length + ' por jugar</small>'));
+      b.appendChild(el('span', 'meta', '›'));
+      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid, cat: c.nombre }); };
+      lista.appendChild(b);
+    });
+    app.appendChild(lista);
+  }
+}
+function categoriasDelTorneo(t) {
+  const map = {};
+  const add = function (m, jugado) {
+    const k = m.division;
+    const c = map[k] || (map[k] = { nombre: k, jugados: [], pendientes: [] });
+    c[jugado ? 'jugados' : 'pendientes'].push(m);
+  };
+  ((t && t.matches) || []).forEach(function (m) { add(m, true); });
+  ((t && t.schedule) || []).forEach(function (m) { add(m, false); });
+  return Object.keys(map).sort().map(function (k) { return map[k]; });
+}
+
+/* ---------- llaves: ronda por ronda, como ATP ---------- */
 const ORDEN_RONDA = [
   [/^final$/i, 'Final', 100], [/final if|if necessary/i, 'Final extra', 99],
-  [/3rd|third|tercer/i, '3er lugar', 95], [/4th|cuarto/i, '4º lugar', 94],
-  [/semi/i, 'Semifinales', 90], [/qtr|quarter|cuarto/i, 'Cuartos', 80]
+  [/3rd|third|tercer/i, '3er lugar', 96], [/4th|cuarto lugar/i, '4º lugar', 95],
+  [/semi/i, 'Semifinales', 90], [/qtr|quarter/i, 'Cuartos', 80]
 ];
 function ronda(label) {
   const t = String(label || '').trim();
-  for (const [re, nombre, orden] of ORDEN_RONDA) if (re.test(t)) return { nombre: nombre, orden: orden };
+  for (const r of ORDEN_RONDA) if (r[0].test(t)) return { nombre: r[1], orden: r[2] };
   let m = t.match(/(\d+)\s*'?s/);
   if (m) { const n = +m[1], NM = { 8: 'Cuartos', 16: 'Octavos', 32: '16avos', 64: '32avos' }; return { nombre: NM[n] || ('Ronda de ' + n), orden: 70 - n / 10 }; }
   m = t.match(/rnd\s*(\d+)|round:?\s*(\d+)/i);
   if (m) { const n = +(m[1] || m[2]); return { nombre: 'Fecha ' + n, orden: 10 + n }; }
   return { nombre: t || 'Partidos', orden: 50 };
 }
-function vLlaves(app) {
-  const divisiones = {};
-  const add = function (m, jugado) {
-    const k = m.division;
-    (divisiones[k] = divisiones[k] || { nombre: k, jugados: [], pendientes: [] })[jugado ? 'jugados' : 'pendientes'].push(m);
-  };
-  ((T && T.matches) || []).forEach(function (m) { add(m, true); });
-  ((T && T.schedule) || []).forEach(function (m) { add(m, false); });
-  const nombres = Object.keys(divisiones).sort();
+function esGrupo(nombre) { return /grupo|group|round robin/i.test(nombre); }
+function llaveCategoria(app, nombre) {
+  const cats = categoriasDelTorneo(T);
+  const C = cats.find(function (x) { return x.nombre === nombre; });
+  if (!C) { app.appendChild(el('div', 'vacio', 'No encontramos esa categoría.')); return; }
+  app.appendChild(el('h2', null, C.nombre));
 
-  if (DIV_ABIERTA && divisiones[DIV_ABIERTA]) {
-    const D = divisiones[DIV_ABIERTA];
-    const volver = el('button', 'volver', '← Todas las categorías');
-    volver.onclick = function () { DIV_ABIERTA = null; render(); };
-    app.appendChild(volver);
-    app.appendChild(h2(D.nombre, D.jugados.length + ' jugados · ' + D.pendientes.length + ' por jugar'));
-
-    const grupos = {};
-    D.jugados.forEach(function (m) {
-      const r = ronda(m.round);
-      (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).jugados.push(m);
-    });
-    D.pendientes.forEach(function (m) {
-      const r = ronda(m.round);
-      (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).pend.push(m);
-    });
-    Object.keys(grupos).sort(function (a, b) { return grupos[b].orden - grupos[a].orden; }).forEach(function (nombre) {
-      app.appendChild(el('div', 'day', nombre));
-      grupos[nombre].pend.forEach(function (m) { app.appendChild(cardPartido(m)); });
-      grupos[nombre].jugados.forEach(function (m) { app.appendChild(cardResultado(m)); });
-    });
-    return;
+  // Round robin: tabla de posiciones desde los partidos reales.
+  if (esGrupo(C.nombre) || /round robin|pool/i.test((C.jugados[0] || {}).drawType || '')) {
+    const tabla = posicionesGrupo(C.jugados);
+    if (tabla.length) {
+      const t = el('table', 'pos');
+      t.innerHTML = '<tr><th>Jugador</th><th>PJ</th><th>G</th><th>P</th><th>Sets</th></tr>';
+      tabla.forEach(function (r) {
+        const tr = el('tr');
+        const td = el('td'); td.appendChild(nodoJugadores([{ uid: r.uid, name: r.nombre }], r.nombre)); tr.appendChild(td);
+        [r.pj, r.g, r.p, r.setsG + '-' + r.setsP].forEach(function (v) { tr.appendChild(el('td', null, String(v))); });
+        t.appendChild(tr);
+      });
+      app.appendChild(t);
+      app.appendChild(el('div', 'nota', 'Tabla calculada con los partidos publicados por la organización.'));
+    }
   }
 
-  app.appendChild(h2('Categorías', nombres.length + ''));
-  if (!nombres.length) { app.appendChild(el('div', 'empty', 'Todavía no hay partidos publicados en esta fecha.')); return; }
+  const grupos = {};
+  C.jugados.forEach(function (m) { const r = ronda(m.round); (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).jugados.push(m); });
+  C.pendientes.forEach(function (m) { const r = ronda(m.round); (grupos[r.nombre] = grupos[r.nombre] || { orden: r.orden, jugados: [], pend: [] }).pend.push(m); });
+  const nombres = Object.keys(grupos).sort(function (a, b) { return grupos[b].orden - grupos[a].orden; });
+  if (!nombres.length) { app.appendChild(el('div', 'vacio', 'Sin partidos en esta categoría.')); return; }
+  if (RONDA >= nombres.length) RONDA = 0;
+
+  if (!CUADRO) {
+    const nav = el('div', 'rondas');
+    const ant = el('button', 'flecha', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>');
+    ant.setAttribute('aria-label', 'Ronda anterior');
+    ant.disabled = RONDA >= nombres.length - 1;
+    ant.onclick = function () { RONDA++; pintar(); };
+    const sig = el('button', 'flecha', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>');
+    sig.setAttribute('aria-label', 'Ronda siguiente');
+    sig.disabled = RONDA <= 0;
+    sig.onclick = function () { RONDA--; pintar(); };
+    nav.appendChild(ant);
+    nav.appendChild(el('div', 'nomr', esc(nombres[RONDA])));
+    nav.appendChild(sig);
+    app.appendChild(nav);
+    const G = grupos[nombres[RONDA]];
+    G.pend.forEach(function (m) { app.appendChild(filaPartido(m)); });
+    G.jugados.forEach(function (m) { app.appendChild(filaResultado(m)); });
+    const b = el('button', 'btn', 'Ver el cuadro completo'); b.style.marginTop = '12px';
+    b.onclick = function () { CUADRO = true; pintar(); };
+    app.appendChild(b);
+  } else {
+    app.appendChild(cuadroCompleto(nombres, grupos));
+    const b = el('button', 'btn', 'Volver a ronda por ronda'); b.style.marginTop = '12px';
+    b.onclick = function () { CUADRO = false; pintar(); };
+    app.appendChild(b);
+    app.appendChild(el('div', 'nota', 'Se arrastra de lado. El cuadro se arma con los partidos publicados, así que puede no coincidir exactamente con la posición del sorteo original.'));
+  }
+}
+function posicionesGrupo(jugados) {
+  const t = {};
+  jugados.forEach(function (m) {
+    const g = m.ganador || {}, p = m.perdedor || {};
+    const gs = m.games || [];
+    const sg = gs.filter(function (x) { return x.w > x.l; }).length, sp = gs.filter(function (x) { return x.l > x.w; }).length;
+    [[g, true, sg, sp], [p, false, sp, sg]].forEach(function (par) {
+      const q = par[0]; if (!q.name) return;
+      const k = q.uid || q.name;
+      const r = t[k] || (t[k] = { uid: q.uid || '', nombre: q.name, pj: 0, g: 0, p: 0, setsG: 0, setsP: 0 });
+      r.pj++; if (par[1]) r.g++; else r.p++;
+      r.setsG += par[2]; r.setsP += par[3];
+    });
+  });
+  return Object.keys(t).map(function (k) { return t[k]; })
+    .sort(function (a, b) { return (b.g - a.g) || ((b.setsG - b.setsP) - (a.setsG - a.setsP)) || a.nombre.localeCompare(b.nombre, 'es'); });
+}
+function cuadroCompleto(nombres, grupos) {
+  const cont = el('div', 'cuadro');
+  const inner = el('div', 'cuadro-in');
+  nombres.slice().reverse().forEach(function (n) {
+    const col = el('div', 'col');
+    col.appendChild(el('div', 'rot', esc(n)));
+    const G = grupos[n];
+    G.pend.forEach(function (m) {
+      const c = el('div', 'cruce');
+      c.innerHTML = '<div><span>' + esc(m.p1 || 'Por definir') + '</span></div><div class="l2"><span>' + esc(m.p2 || 'Por definir') + '</span></div>';
+      const d = fechaDe(m.day, m.time, T);
+      if (d) c.appendChild(el('div', 'l2', '<b>' + hhmm(d) + '</b>'));
+      col.appendChild(c);
+    });
+    G.jugados.forEach(function (m) {
+      const g = (m.ganador || {}).name || '—', p = (m.perdedor || {}).name || '—';
+      const gs = m.games || [];
+      const sg = gs.filter(function (x) { return x.w > x.l; }).length, sp = gs.filter(function (x) { return x.l > x.w; }).length;
+      const c = el('div', 'cruce');
+      c.innerHTML = '<div class="g"><span>' + esc(g) + '</span><b>' + sg + '</b></div><div class="l2"><span>' + esc(p) + '</span><b>' + sp + '</b></div>';
+      col.appendChild(c);
+    });
+    inner.appendChild(col);
+  });
+  cont.appendChild(inner);
+  return cont;
+}
+
+/* ================= JUGADORES ================= */
+function vJugadores(app) {
+  app.appendChild(el('h1', null, 'Jugadores'));
+  const total = jugadores().length;
+  app.appendChild(el('div', 'sub', total + ' personas del circuito, del ranking oficial y de r2sports.'));
+  app.appendChild(buscador('Busca por nombre o ciudad', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
   const lista = el('div', 'lista');
-  nombres.forEach(function (n) {
-    const D = divisiones[n];
+  jugadores().forEach(function (j) {
     const b = el('button', 'li');
-    b.appendChild(el('span', 'nm', esc(n) + '<small>' + D.jugados.length + ' jugados · ' + D.pendientes.length + ' por jugar</small>'));
-    b.appendChild(el('span', 'chev', '›'));
-    b.onclick = function () { DIV_ABIERTA = n; render(); window.scrollTo(0, 0); };
+    const mejor = j.ranking.slice().sort(function (x, y) { return x.puesto - y.puesto; })[0];
+    b.appendChild(el('span', 'nm', esc(j.nombre) + '<small>' + esc(j.ciudad || 'sin ciudad') + '</small>'));
+    if (mejor) b.appendChild(el('span', 'meta', mejor.puesto + 'º ' + esc(mejor.categoria)));
+    b.onclick = function () { ir({ vista: 'jugador', uid: j.uid || j.id }); };
     lista.appendChild(b);
   });
   app.appendChild(lista);
 }
 
-/* ================= VISTA: JUGADORES ================= */
-function vJugadores(app) {
-  if (JUG_ABIERTO) return fichaJugador(app, JUG_ABIERTO);
+/* ================= PERFIL ================= */
+function vJugador(app) {
+  const j = jugadores().find(function (x) { return x.uid === RUTA.uid || x.id === RUTA.uid; });
+  if (!j) { app.appendChild(el('div', 'vacio', 'No encontramos a ese jugador.')); return; }
 
-  const b = buscadorJugadores({
-    placeholder: 'Buscar jugador del circuito',
-    onPick: function (uid) { abrirPerfil(uid); }
-  });
-  app.appendChild(b.nodo);
-  const cont = el('div'); cont.style.marginTop = '12px'; app.appendChild(cont);
+  const cab = el('div', 'ficha');
+  const url = foto(j);
+  if (url) {
+    const img = el('img', 'foto'); img.src = url; img.alt = '';
+    img.onerror = function () { const i = el('div', 'ini', esc(iniciales(j.nombre))); img.replaceWith(i); };
+    cab.appendChild(img);
+  } else cab.appendChild(el('div', 'ini', esc(iniciales(j.nombre))));
+  const txt = el('div');
+  txt.appendChild(el('h3', null, esc(j.nombre)));
+  txt.appendChild(el('div', 'sub', esc(j.ciudad || 'sin ciudad registrada') + (j.alias.length > 1 ? ' · también aparece como ' + esc(j.alias.filter(function (a) { return a !== j.nombre; }).join(', ')) : '')));
+  cab.appendChild(txt);
+  app.appendChild(cab);
 
-  const base = ((T && T.players) || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
-  cont.appendChild(h2('Inscritos en esta fecha', base.length + ''));
-  if (!base.length) { cont.appendChild(el('div', 'empty', 'Todavía no hay inscritos publicados.')); return; }
-  const lista = el('div', 'lista');
-  base.forEach(function (p) {
-    const b2 = el('button', 'li');
-    const hist = JUG && JUG.players && JUG.players[p.uid];
-    const med = hist ? hist.medals : null;
-    b2.appendChild(el('span', 'nm', esc(p.name) + (p.uid === MI ? '<span class="yo">TÚ</span>' : '') + '<small>' + esc(p.place || 'Sin ciudad') + '</small>'));
-    if (med && (med.gold || med.silver || med.bronze)) b2.appendChild(el('span', 'meta', '🥇' + med.gold + ' 🥈' + med.silver + ' 🥉' + med.bronze));
-    b2.appendChild(el('span', 'chev', '›'));
-    b2.onclick = function () { abrirPerfil(p.uid); };
-    lista.appendChild(b2);
-  });
-  cont.appendChild(lista);
-}
-function fichaJugador(app, uid) {
-  const p = jugador(uid) || {};
-  const hist = (JUG && JUG.players && JUG.players[uid]) || null;
-  const volver = el('button', 'volver', '← Todos los jugadores');
-  volver.onclick = function () { JUG_ABIERTO = null; render(); };
-  app.appendChild(volver);
-
-  const f = el('div', 'ficha');
-  const cab = el('div'); cab.style.display = 'flex'; cab.style.alignItems = 'flex-start'; cab.style.gap = '10px';
-  const izq = el('div'); izq.style.minWidth = '0';
-  izq.appendChild(el('h3', null, esc(p.name || (hist && hist.name) || 'Jugador')));
-  izq.appendChild(el('div', 'loc2', esc([p.place, p.club, p.country].filter(Boolean).join(' · ') || 'Sin ciudad registrada')));
-  cab.appendChild(izq);
-  // Compartir vive acá, discreto: en la portada estorbaba y nadie lo iba a usar
-  // antes de saber cuándo juega.
-  const share = el('button', 'iconbtn'); share.appendChild(icono('compartir'));
-  share.setAttribute('aria-label', 'Compartir este perfil');
-  share.onclick = async function () {
-    const url = location.origin + location.pathname + '?tid=' + TID + '&jugador=' + uid;
-    const nom = p.name || (hist && hist.name) || 'Jugador';
-    try {
-      if (navigator.share) { await navigator.share({ title: nom + ' · Racquetball Chile', url: url }); return; }
-      await navigator.clipboard.writeText(url);
-    } catch (e) { prompt('Copia este link:', url); return; }
-    share.innerHTML = ''; share.appendChild(icono('listo'));
-    share.style.color = 'var(--green)';
-    setTimeout(function () { share.innerHTML = ''; share.appendChild(icono('compartir')); share.style.color = ''; }, 1800);
-  };
-  cab.appendChild(share);
-  f.appendChild(cab);
-  const big = el('div', 'big');
-  const med = (hist && hist.medals) || { gold: 0, silver: 0, bronze: 0 };
-  [['🥇 Oros', med.gold], ['🥈 Platas', med.silver], ['🥉 Bronces', med.bronze], ['Fechas', hist ? hist.tournaments.length : 0]].forEach(function (par) {
-    const d = el('div');
-    d.appendChild(el('b', null, String(par[1])));
-    d.appendChild(el('span', null, esc(par[0])));
-    big.appendChild(d);
-  });
-  f.appendChild(big);
-  if (uid !== MI) {
-    const b = el('button', 'primary', 'Este soy yo'); b.style.marginTop = '12px';
-    b.onclick = function () { MI = uid; localStorage.setItem('rq.uid', uid); irA('ahora'); };
-    f.appendChild(b);
-  }
-  app.appendChild(f);
-
-  const prox = ((T && T.schedule) || []).filter(function (m) { return tieneUid(m, uid); })
-    .sort(function (a, b) { return (fechaDe(a.day, a.time) || 8e15) - (fechaDe(b.day, b.time) || 8e15); });
-  if (prox.length) {
-    const s = el('section'); s.appendChild(h2('Por jugar', prox.length + ''));
-    prox.forEach(function (m) { s.appendChild(cardPartido(m)); });
-    app.appendChild(s);
-  }
-  const jugados = partidosDe(uid);
-  if (jugados.length) {
-    const s = el('section');
-    const ganados = jugados.filter(function (m) { return m.ganador && m.ganador.uid === uid; }).length;
-    s.appendChild(h2('En esta fecha', ganados + ' ganados · ' + (jugados.length - ganados) + ' perdidos'));
-    jugados.forEach(function (m) { s.appendChild(cardResultado(m, { badge: m.ganador && m.ganador.uid === uid ? 'Ganó' : 'Perdió' })); });
-    app.appendChild(s);
-  }
-  if (hist && hist.titles && hist.titles.length) {
-    const s = el('section'); s.appendChild(h2('Podios en el circuito', hist.titles.length + ''));
-    const lista = el('div', 'lista');
-    hist.titles.slice().sort(function (a, b) { return String(b.year).localeCompare(String(a.year)); }).forEach(function (t) {
-      const row = el('div', 'li');
-      row.appendChild(el('span', null, t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : '🥉'));
-      row.appendChild(el('span', 'nm', esc(t.category) + '<small>' + esc(t.label) + '</small>'));
-      row.appendChild(el('span', 'meta', esc(t.year)));
-      lista.appendChild(row);
-    });
-    s.appendChild(lista); app.appendChild(s);
-  }
-  // ---- carrera completa (data/historico.json) y cara a cara ----
-  const carrera = carreraDe(uid);
+  // récord y racha, de la carrera completa
+  const carrera = carreraDe(j);
   if (carrera.length) {
-    const s = el('section');
-    const g = carrera.filter(function (m) { return m.gane; }).length;
-    s.appendChild(h2('Carrera completa', g + ' ganados · ' + (carrera.length - g) + ' perdidos'));
+    const gan = carrera.filter(function (m) { return m.gane; }).length;
+    let racha = 0, signo = null;
+    for (const m of carrera) {
+      if (signo === null) { signo = m.gane; racha = 1; }
+      else if (m.gane === signo) racha++;
+      else break;
+    }
+    const k = el('div', 'kpis');
+    [[gan + '-' + (carrera.length - gan), 'ganados-perdidos'],
+     [Math.round(gan / carrera.length * 100) + '%', 'victorias'],
+     [(signo ? '+' : '−') + racha, signo ? 'ganados seguidos' : 'perdidos seguidos']].forEach(function (par) {
+      const d = el('div', 'kpi');
+      d.appendChild(el('b', null, esc(par[0])));
+      d.appendChild(el('span', null, esc(par[1])));
+      k.appendChild(d);
+    });
+    app.appendChild(k);
+  }
 
-    // rivales más frecuentes: el cara a cara del tenis
-    const rivales = {};
+  // ranking oficial por categoría, con desglose por fecha
+  if (j.ranking && j.ranking.length) {
+    app.appendChild(el('h2', null, 'Ranking oficial' + (RK && RK.corte ? ' · ' + RK.corte.etiqueta : '')));
+    j.ranking.slice().sort(function (a, b) { return a.puesto - b.puesto; }).forEach(function (r) {
+      const c = el('div', 'card'); c.style.marginBottom = '9px';
+      c.appendChild(el('div', 't', esc(r.categoria)));
+      c.appendChild(el('div', 'n', r.puesto + 'º' + (r.empatado ? ' =' : '') + ' · ' + r.pts + ' puntos'));
+      c.appendChild(el('div', 'd', r.jugadas + (r.jugadas === 1 ? ' fecha jugada' : ' fechas jugadas') + (r.def ? ' · defiende ' + r.def : '')));
+      const conPts = (r.fechas || []).filter(function (f) { return f.pts != null; });
+      if (conPts.length) {
+        const max = Math.max.apply(null, conPts.map(function (f) { return f.pts || 0; })) || 1;
+        const barras = el('div', 'barras');
+        conPts.forEach(function (f) {
+          const d = el('div');
+          d.style.height = Math.max(3, Math.round((f.pts || 0) / max * 100)) + '%';
+          if (f.pts) d.style.background = 'var(--green)';
+          d.innerHTML = '<b>' + (f.pts || 0) + '</b><i>' + esc(f.nombre) + '</i>';
+          barras.appendChild(d);
+        });
+        c.appendChild(barras);
+        c.appendChild(el('div', 'barras-pie'));
+      }
+      app.appendChild(c);
+    });
+  }
+
+  // próximos partidos en el torneo abierto
+  const prox = ((T && T.schedule) || []).filter(function (m) {
+    return (m.lado1 || []).concat(m.lado2 || []).some(function (x) { return x.uid === j.uid; });
+  });
+  if (prox.length) {
+    app.appendChild(el('h2', null, 'Por jugar'));
+    prox.forEach(function (m) { app.appendChild(filaPartido(m)); });
+  }
+
+  // cara a cara
+  if (carrera.length) {
+    const riv = {};
     carrera.forEach(function (m) {
       m.rivales.forEach(function (r) {
         const k = r.uid || r.name;
-        const x = rivales[k] || (rivales[k] = { uid: r.uid, name: r.name, g: 0, p: 0 });
+        const x = riv[k] || (riv[k] = { uid: r.uid, nombre: r.name, g: 0, p: 0 });
         if (m.gane) x.g++; else x.p++;
       });
     });
-    const top = Object.keys(rivales).map(function (k) { return rivales[k]; })
-      .sort(function (a, b) { return (b.g + b.p) - (a.g + a.p); }).slice(0, 6);
+    const top = Object.keys(riv).map(function (k) { return riv[k]; })
+      .sort(function (a, b) { return (b.g + b.p) - (a.g + a.p); }).slice(0, 8);
     if (top.length) {
-      s.appendChild(el('div', 'day', 'Cara a cara'));
+      app.appendChild(el('h2', null, 'Cara a cara'));
       const lista = el('div', 'lista');
       top.forEach(function (r) {
         const b = el('button', 'li');
-        b.appendChild(el('span', 'nm', esc(r.name) + '<small>' + (r.g + r.p) + (r.g + r.p === 1 ? ' partido' : ' partidos') + '</small>'));
-        b.appendChild(el('span', 'meta', '<b style="color:var(--green)">' + r.g + '</b> · ' + r.p));
-        if (r.uid) b.onclick = function () { JUG_ABIERTO = r.uid; render(); window.scrollTo(0, 0); };
+        b.appendChild(el('span', 'nm', esc(r.nombre) + '<small>' + (r.g + r.p) + (r.g + r.p === 1 ? ' partido' : ' partidos') + '</small>'));
+        b.appendChild(el('span', 'meta', '<b style="color:var(--green-2);font-size:14px">' + r.g + '</b> · ' + r.p));
+        if (r.uid) b.onclick = function () { ir({ vista: 'jugador', uid: r.uid }); };
         lista.appendChild(b);
       });
-      s.appendChild(lista);
-      s.appendChild(el('div', 'note', 'Ganados · perdidos contra cada rival, en todos los torneos de r2sports.'));
+      app.appendChild(lista);
     }
 
-    s.appendChild(el('div', 'day', 'Todos sus partidos'));
+    app.appendChild(el('h2', null, 'Carrera'));
     const lista2 = el('div', 'lista');
-    carrera.slice(0, 60).forEach(function (m) {
+    carrera.slice(0, 40).forEach(function (m) {
       const row = el('div', 'li');
-      row.appendChild(el('span', 'nm',
-        '<small>' + esc(m.fechaTxt + ' · ' + m.torneo) + '</small>' +
-        (m.gane ? 'Ganó a ' : 'Perdió con ') + '<b>' + esc(m.rivales.map(function (r) { return r.name; }).join(' / ')) + '</b>'));
+      const nm = el('span', 'nm');
+      nm.appendChild(el('small', null, esc(m.fechaTxt + ' · ' + m.torneo)));
+      nm.appendChild(document.createTextNode(m.gane ? 'Ganó a ' : 'Perdió con '));
+      nm.appendChild(nodoJugadores(m.rivales, ''));
+      row.appendChild(nm);
       row.appendChild(el('span', 'meta', esc(m.marcador || '')));
       lista2.appendChild(row);
     });
-    s.appendChild(lista2);
-    if (carrera.length > 60) s.appendChild(el('div', 'note', 'Se muestran los 60 más recientes de ' + carrera.length + '.'));
-    app.appendChild(s);
-  } else if (!HIST) {
-    app.appendChild(el('div', 'note', 'La carrera completa se está cargando…'));
+    app.appendChild(lista2);
+    if (carrera.length > 40) app.appendChild(el('div', 'nota', 'Se muestran los 40 partidos más recientes de ' + carrera.length + '.'));
+  } else {
+    app.appendChild(el('div', 'nota', HIST ? 'Todavía no tenemos partidos de este jugador en r2sports.' : 'Cargando su carrera…'));
   }
-
-  if (hist && hist.tournaments && hist.tournaments.length) {
-    const s = el('section'); s.appendChild(h2('Fechas jugadas', hist.tournaments.length + ''));
-    const lista = el('div', 'lista');
-    hist.tournaments.slice().reverse().forEach(function (t) {
-      const b = el('button', 'li');
-      b.appendChild(el('span', 'nm', esc(t.name) + '<small>' + esc((t.divisions || []).join(' · ')) + '</small>'));
-      b.appendChild(el('span', 'meta', esc(t.year)));
-      b.onclick = function () { cambiarTorneo(t.tid); };
-      lista.appendChild(b);
+}
+function nombreTorneo(tid) {
+  const c = catalogo().find(function (t) { return String(t.tid) === String(tid); });
+  if (c) return nombreCorto(c.name, c.startDate);
+  const n = TNOM && TNOM.torneos && TNOM.torneos[tid];
+  return n ? nombreCorto(n.name, n.startDate) : 'Torneo ' + tid;
+}
+function carreraDe(j) {
+  const uids = [j.uid].concat(j.uidFusionados || []).filter(Boolean).map(String);
+  const P = (HIST && HIST.partidos) || [];
+  const out = [];
+  P.forEach(function (m) {
+    const gan = m.ganador || [], per = m.perdedor || [];
+    const enG = gan.some(function (x) { return uids.indexOf(String(x.uid)) >= 0; });
+    const enP = per.some(function (x) { return uids.indexOf(String(x.uid)) >= 0; });
+    if (!enG && !enP) return;
+    const d = m.date ? new Date(m.date) : null;
+    out.push({
+      gane: enG, rivales: enG ? per : gan, marcador: m.marcador || '',
+      torneo: nombreTorneo(m.tid), tid: m.tid, fecha: d,
+      fechaTxt: d && !isNaN(d) ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : (m.date || '')
     });
-    s.appendChild(lista); app.appendChild(s);
-  }
-  if (!hist) app.appendChild(el('div', 'note', 'Todavía no tenemos historial de este jugador en otras fechas.'));
+  });
+  return out.sort(function (a, b) { return (b.fecha || 0) - (a.fecha || 0); });
 }
 
-/* ================= VISTA: RANKING ================= */
+/* ================= RANKING ================= */
 function vRanking(app) {
-  if (!RANK) { app.appendChild(el('div', 'skel')); return; }
-  const cats = RANK.categories || [];
-  if (!cats.length) { app.appendChild(el('div', 'empty', 'Todavía no hay ranking calculado.')); return; }
-  // Por defecto, la categoría con más jugadores: es la que le interesa a más gente.
-  if (!RANK_CAT || !cats.some(function (c) { return c.key === RANK_CAT; })) {
-    RANK_CAT = cats.slice().sort(function (a, b) { return (b.all || []).length - (a.all || []).length; })[0].key;
+  app.appendChild(el('h1', null, 'Ranking oficial'));
+  if (!RK) { app.appendChild(el('div', 'nota', 'Cargando…')); return; }
+  app.appendChild(el('div', 'sub', 'Federación Chilena de Racquetball · corte ' + RK.corte.etiqueta));
+
+  if (!RUTA.cat) {
+    const cards = el('div', 'cards');
+    RK.categorias.forEach(function (c) { cards.appendChild(tarjetaCategoria(c)); });
+    app.appendChild(cards);
+    app.appendChild(el('div', 'nota', 'Los puntos y los puestos son los del documento oficial. Nada de esto lo calcula la web.'));
+    return;
   }
-  const C = cats.find(function (c) { return c.key === RANK_CAT; });
+  const C = RK.categorias.find(function (c) { return c.key === RUTA.cat; });
+  if (!C) { app.appendChild(el('div', 'vacio', 'No encontramos esa categoría.')); return; }
+  const volver = el('button', 'btn', '← Todas las categorías');
+  volver.onclick = function () { ir({ vista: 'ranking' }); };
+  app.appendChild(volver);
+  app.appendChild(el('h2', null, C.label));
+  app.appendChild(el('div', 'sub', C.total + ' jugadores · ' + C.conPuntos + ' con puntos'));
 
-  const selC = el('select');
-  cats.forEach(function (c) {
-    const o = el('option'); o.value = c.key; o.textContent = c.label + ' (' + (c.all || []).length + ')';
-    selC.appendChild(o);
-  });
-  selC.value = RANK_CAT;
-  selC.onchange = function () { RANK_CAT = this.value; render(); };
-  app.appendChild(selC);
-
-  const chips = el('div', 'chips'); chips.style.marginTop = '12px';
-  const opciones = [['oficial', 'Vigente (últimas 4 fechas)'], ['all', 'Histórico']]
-    .concat((RANK.years || []).map(function (y) { return [y, y]; }));
-  opciones.forEach(function (par) {
-    const b = el('button', 'chip', esc(par[1]));
-    b.setAttribute('aria-pressed', RANK_ANIO === par[0]);
-    b.onclick = function () { RANK_ANIO = par[0]; render(); };
-    chips.appendChild(b);
-  });
-  app.appendChild(chips);
-
-  const filas = RANK_ANIO === 'oficial' ? (C.official || []) : RANK_ANIO === 'all' ? (C.all || []) : ((C.years || {})[RANK_ANIO] || []);
-  app.appendChild(h2(C.label, filas.length + ' jugadores'));
-  if (!filas.length) { app.appendChild(el('div', 'empty', 'Sin puntos en este periodo.')); return; }
   const lista = el('div', 'lista');
-  filas.forEach(function (r, i) {
-    const b = el('button', 'li');
-    b.appendChild(el('span', 'pos', String(i + 1)));
-    b.appendChild(el('span', 'nm', esc(r.name) + (r.uid === MI ? '<span class="yo">TÚ</span>' : '')));
-    b.appendChild(el('span', 'pts', String(r.points)));
-    if (r.uid) b.onclick = function () { JUG_ABIERTO = r.uid; irA('jugadores'); };
+  C.jugadores.forEach(function (p) {
+    const b = el('button', 'li' + (p.puesto <= 3 && p.pts > 0 ? ' top' : ''));
+    b.appendChild(el('span', 'pos', p.puesto + 'º' + (p.empatado ? '=' : '')));
+    const reg = porNombre(p.nombre);
+    const nm = el('span', 'nm');
+    nm.appendChild(nodoJugadores([{ uid: reg && reg.uid, name: p.nombre }], p.nombre));
+    if (p.ciudad) nm.appendChild(el('small', null, esc(p.ciudad)));
+    b.appendChild(nm);
+    b.appendChild(el('span', 'pts', String(p.pts)));
+    if (reg && reg.uid) b.onclick = function () { ir({ vista: 'jugador', uid: reg.uid }); };
     lista.appendChild(b);
   });
   app.appendChild(lista);
-
-  const nota = el('div', 'warn');
-  nota.innerHTML = '<b>Ranking no oficial.</b> La Federación no publica su reglamento de puntaje en internet, así que ' +
-    'este cálculo usa la tabla del cuadro olímpico: oro 1400/1100/1000/800/700, plata 600/400/375/300/275, ' +
-    'bronce 250/225/200/150/125 y blanco 100/75/50/25/15, según el puesto final. El ranking vigente suma las últimas 4 fechas. ' +
-    'Si la tabla real es otra, se corrige y se recalcula solo.';
-  app.appendChild(nota);
+  if (C.desordenEnPdf) app.appendChild(el('div', 'aviso', 'En el documento oficial esta categoría venía sin reordenar: los puestos de acá se recalcularon desde los puntos.'));
+  if ((C.duplicados || []).length) app.appendChild(el('div', 'aviso', 'El documento repetía a ' + C.duplicados.map(function (d) { return d.nombre; }).join(', ') + '. Se usó la fila con puntos.'));
+  app.appendChild(el('div', 'nota', RK.desempate));
 }
 
-/* ---------- navegación ---------- */
-const TABS = [
-  ['ahora', 'Ahora', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
-  ['horarios', 'Horarios', '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>'],
-  ['llaves', 'Llaves', '<path d="M4 6h6M4 18h6M10 6v12M10 12h5M15 12h5"/><circle cx="20" cy="12" r="1.6"/>'],
-  ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>'],
-  ['ranking', 'Ranking', '<path d="M5 20V10M12 20V4M19 20v-7"/>']
-];
-function pintarTabs() {
-  const c = $('#tabs'); c.innerHTML = '';
-  TABS.forEach(function (t) {
-    const b = el('button', 'tab', '<svg viewBox="0 0 24 24">' + t[2] + '</svg>' + t[1]);
-    b.setAttribute('aria-current', VISTA === t[0]);
-    b.onclick = function () { irA(t[0]); };
-    c.appendChild(b);
-  });
-}
-function irA(v) {
-  if (v !== VISTA) { BUSCA = ''; if (v !== 'jugadores') JUG_ABIERTO = null; if (v !== 'llaves') DIV_ABIERTA = null; }
-  VISTA = v; history.replaceState(null, '', '#' + v); render(); window.scrollTo(0, 0);
+/* ---------- pie ---------- */
+function pintarPie() {
+  const p = $('#pie'); p.innerHTML = '';
+  const activo = torneoActivo();
+  p.appendChild(el('div', null,
+    'Resultados y horarios: <a href="https://www.r2sports.com/" target="_blank" rel="noopener">r2sports.com</a>, la plataforma oficial de los torneos. ' +
+    'Ranking: documento oficial de la Federación Chilena de Racquetball' + (RK && RK.corte ? ', corte <b>' + esc(RK.corte.etiqueta) + '</b>' : '') + '.'));
+  p.appendChild(el('div', null,
+    'Con torneo en curso los datos se revisan <b>cada 10 a 15 minutos</b> entre las 9 y las 23 horas. Sin torneo, <b>una vez por semana</b>. ' +
+    (T && T.updatedAt ? 'Última lectura: <b>' + esc(haceCuanto(T.updatedAt)) + '</b>. ' : '') +
+    (activo ? 'Los horarios los publica la organización y pueden cambiar sin aviso.' : '')));
 }
 
 /* ---------- render ---------- */
-function render() {
+function pintar() {
+  pintarTabs(); pintarHeader();
   const app = $('#app'); app.innerHTML = '';
-  pintarTabs();
-  if (!T) { app.appendChild(el('div', 'skel')); app.appendChild(el('div', 'skel')); return; }
-
-  const t = T.tournament || {};
-  $('#torneo').textContent = t.name || 'Torneo';
-  $('#sede').textContent = (t.venue || '').replace(/\s*-\s*/, ' · ');
-  $('#fechas').textContent = rangoEs(t.startDate, t.endDate);
-  $('#upd').textContent = haceCuanto(T.updatedAt);
-  $('#fuente').href = 'https://www.r2sports.com/tourney/home.asp?TID=' + T.tid;
-  $('#estado').textContent = { 'in-progress': 'En juego', finished: 'Finalizado', upcoming: 'Por comenzar' }[T.status] || 'Torneo';
-  $('#dot').style.display = T.status === 'in-progress' ? '' : 'none';
-  $('#disc').textContent = ' Última lectura: ' + new Date(T.updatedAt).toLocaleString('es-CL') + '.';
-
-  // selector de fecha del circuito
-  if (CAT && CAT.tournaments && CAT.tournaments.length > 1) {
-    const s = $('#torneoSel'); s.hidden = false;
-    if (!s.options.length) {
-      CAT.tournaments.forEach(function (x) {
-        const o = el('option'); o.value = x.tid;
-        o.textContent = x.name + ' · ' + (x.year || '');
-        s.appendChild(o);
-      });
-      s.onchange = function () { cambiarTorneo(this.value); };
-    }
-    s.value = TID;
-  }
-
-  const av = $('#aviso'); av.innerHTML = '';
-  if (T.scheduleStatus === 'cache') {
-    av.appendChild(el('div', 'warn', 'r2sports no responde ahora. Estos horarios son los últimos que alcanzamos a leer' +
-      (T.horariosDesde ? ' (' + haceCuanto(T.horariosDesde) + ')' : '') + ', así que pueden estar desactualizados.'));
-  } else if (T.scheduleStatus && T.scheduleStatus !== 'ok') {
-    av.appendChild(el('div', 'warn', 'r2sports no está entregando los horarios en este momento.'));
-  } else if (!(T.schedule || []).length && T.status !== 'finished') {
-    av.appendChild(el('div', 'warn', 'La organización todavía no publica horarios para esta fecha.'));
-  }
-
-  ({ ahora: vAhora, horarios: vHorarios, llaves: vLlaves, jugadores: vJugadores, ranking: vRanking }[VISTA] || vAhora)(app);
+  ({ inicio: vInicio, campeonatos: vCampeonatos, campeonato: vCampeonato, jugadores: vJugadores, jugador: vJugador, ranking: vRanking }[RUTA.vista] || vInicio)(app);
+  pintarPie();
 }
 
 /* ---------- carga ---------- */
+const cache = {};
 async function json(url) {
   try {
     const r = await fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now(), { cache: 'no-store' });
@@ -1023,45 +982,47 @@ async function json(url) {
     return await r.json();
   } catch (e) { return null; }
 }
-async function cargarTorneo() {
-  // Versión portable/offline: un archivo único con los datos incrustados.
-  if (window.RQ_DATA) { T = window.RQ_DATA; render(); return; }
-  const j = await json('./data/' + TID + '.json') || await json('./data.json');
-  if (!j || !j.tournament) {
-    $('#app').innerHTML = '';
-    $('#app').appendChild(el('div', 'warn', 'No pudimos cargar los datos. Revisa tu conexión y vuelve a intentar.'));
+async function cargarTorneo(tid) {
+  if (!tid) return null;
+  if (cache[tid]) { T = cache[tid]; return T; }
+  const j = window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid) ? window.RQ_DATA : await json('./data/' + tid + '.json');
+  if (j && j.tournament) { cache[tid] = j; T = j; }
+  return T;
+}
+async function arrancar() {
+  RUTA = leerHash();
+  if (window.RQ_DATA) {
+    CAT = window.RQ_CAT || null; JUG = window.RQ_JUG || null; RK = window.RQ_RK || null;
+    HIST = window.RQ_HIST || null; TNOM = window.RQ_TNOM || null;
+    T = window.RQ_DATA; cache[T.tid] = T;
+    pintar();
     return;
   }
-  T = j; render();
-}
-async function cargarExtras() {
-  if (window.RQ_DATA) { CAT = window.RQ_CAT || CAT; JUG = window.RQ_JUG || JUG; RANK = window.RQ_RANK || RANK; HIST = window.RQ_HIST || HIST; TNOM = window.RQ_TNOM || TNOM; if (T) render(); return; }
-  const [c, ju, ra] = await Promise.all([json('./data/index.json'), json('./data/jugadores.json'), json('./data/ranking.json')]);
-  CAT = c || CAT; JUG = ju || JUG; RANK = ra || RANK;
-  if (T) render();
-  // El histórico completo puede pesar: se carga al final y la web funciona sin él.
+  const [cat, rk] = await Promise.all([json('./data/index.json'), json('./data/ranking-oficial.json')]);
+  CAT = cat; RK = rk;
+  pintar();
+  const objetivo = RUTA.tid || (torneoActivo() || {}).tid || (ultimoJugado() || {}).tid;
+  const [ju] = await Promise.all([json('./data/jugadores-circuito.json'), cargarTorneo(objetivo)]);
+  JUG = ju;
+  pintar();
   const [hi, no] = await Promise.all([json('./data/historico.json'), json('./data/torneos-nombres.json')]);
-  HIST = hi || HIST; TNOM = no || TNOM;
-  if (T && (VISTA === 'jugadores' || VISTA === 'ahora')) render();
-}
-function cambiarTorneo(tid) {
-  if (String(tid) === String(TID)) return;
-  TID = String(tid);
-  JUG_ABIERTO = null; DIV_ABIERTA = null; BUSCA = ''; DIA = 'todo'; FILTRO_DIV = 'todo';
-  T = null; render();
-  history.replaceState(null, '', '?tid=' + TID + (MI ? '&jugador=' + MI : '') + '#' + VISTA);
-  cargarTorneo();
+  HIST = hi; TNOM = no;
+  pintar();
 }
 
+window.addEventListener('popstate', function () { RUTA = leerHash(); RONDA = 0; CUADRO = false; if (RUTA.tid) cargarTorneo(RUTA.tid).then(pintar); else pintar(); });
 window.addEventListener('hashchange', function () {
-  const v = (location.hash || '#ahora').slice(1).split('/')[0];
-  if (v !== VISTA) { VISTA = v; render(); }
+  const nueva = leerHash();
+  if (JSON.stringify(nueva) === JSON.stringify(RUTA)) return;
+  RUTA = nueva; RONDA = 0; CUADRO = false;
+  if (RUTA.tid) cargarTorneo(RUTA.tid).then(pintar); else pintar();
 });
-pintarTabs();
-cargarTorneo().then(cargarExtras);
-setInterval(cargarTorneo, 90000);
-setInterval(function () { if (T && (VISTA === 'ahora' || VISTA === 'horarios')) render(); }, 60000);
-document.addEventListener('visibilitychange', function () { if (!document.hidden) cargarTorneo(); });
+arrancar();
+setInterval(function () {
+  const a = torneoActivo();
+  if (!a || window.RQ_DATA) return;
+  json('./data/' + a.tid + '.json').then(function (j) { if (j && j.tournament) { cache[a.tid] = j; if (!RUTA.tid || RUTA.tid === a.tid) T = j; pintar(); } });
+}, 120000);
 </script>
 </body>
 </html>

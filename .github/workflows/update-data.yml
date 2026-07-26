@@ -33,6 +33,13 @@ jobs:
           RQ_PAUSA: '1200'
           RQ_CONCURRENCIA: '2'
         run: node generar-datos.js
+      - name: Ranking oficial y registro de jugadores
+        # El ranking sale del documento de la Federación, no de un cálculo propio.
+        # Si no calza con el checklist, verificar-ranking.js falla y no se publica.
+        run: |
+          node generar-ranking-oficial.js
+          node verificar-ranking.js
+          node generar-jugadores.js
       - name: Commit si cambió
         run: |
           if ! git diff --quiet -- data data.json; then
