@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-05">
+<html lang="es" data-v="2026-07-27-06">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -253,6 +253,20 @@
   .h2h .barra{width:96px;height:8px;border-radius:99px;background:var(--signal-soft);overflow:hidden;flex:none}
   .h2h .barra i{display:block;height:100%;background:var(--green-2)}
   .h2h .cifra{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink-2);width:44px;text-align:right;flex:none}
+  .h2h .chev{flex:none;color:var(--ink-3);font-size:15px;line-height:1;transition:transform .15s;width:12px;text-align:center}
+  .h2h[aria-expanded=true]{border-bottom-color:transparent}
+  .h2h[aria-expanded=true] .chev{transform:rotate(90deg);color:var(--green-2)}
+  /* los cruces de un cara a cara: fecha, resultado y marcador */
+  .cruces{background:var(--paper);border:1px solid var(--line-2);border-radius:11px;padding:4px 11px 9px;margin:0 0 9px}
+  .cruces .res{font-size:13px;font-weight:700;padding:8px 0;border-bottom:1px solid var(--line-2);display:flex;gap:9px;align-items:baseline}
+  .cruces .res:last-child{border-bottom:0}
+  .cruces .gp{font-size:10.5px;font-weight:800;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--green-soft);color:var(--green-2)}
+  .cruces .gp.mala{background:var(--signal-soft);color:var(--signal)}
+  .cruces .txt{flex:1;min-width:0}
+  .cruces .mc{font-variant-numeric:tabular-nums;font-weight:700}
+  .cruces .dd{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500;margin-top:1px}
+  .cruces .tot{font-size:12px;color:var(--ink-3);font-weight:600;padding:7px 0 2px}
+  .cruces .verperfil{font-size:13px;font-weight:700;color:var(--green-2);background:none;border:0;padding:9px 0 2px;text-align:left;width:100%}
   .destacado{background:var(--green-soft);border-radius:var(--radius);padding:12px 13px;margin-top:10px;font-size:14.5px}
   .destacado b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--green-2);margin-bottom:3px}
 
@@ -1290,7 +1304,7 @@ function vJugador(app) {
     carrera.slice(0, 12).forEach(function (p) {
       const b = el('button', p.gane ? '' : 'p', p.gane ? 'G' : 'P');
       const quien = p.rivales.map(function (r) { return r.name; }).join(' / ');
-      b.title = (p.gane ? 'Ganó a ' : 'Perdió con ') + quien + ' · ' + p.fechaTxt;
+      b.title = (p.gane ? 'Ganó a ' : 'Perdió con ') + quien + ' · ' + cuandoEs(p);
       b.setAttribute('aria-label', b.title);
       b.setAttribute('aria-pressed', 'false');
       // Un toque muestra contra quién fue, sin sacarte de la página; el nombre del
@@ -1306,7 +1320,7 @@ function vJugador(app) {
         linea.appendChild(nodoJugadores(p.rivales, quien));
         if (p.marcador) linea.appendChild(document.createTextNode(' · ' + p.marcador));
         panelForma.appendChild(linea);
-        panelForma.appendChild(el('div', 'cuando', esc(p.torneo + ' · ' + p.fechaTxt)));
+        panelForma.appendChild(el('div', 'cuando', esc(p.torneo + ' · ' + cuandoEs(p))));
         panelForma.hidden = false;
       };
       forma.appendChild(b);
@@ -1355,7 +1369,7 @@ function vJugador(app) {
         if (!mp) return;
         const peor = mejor && (ordenCat(mejor.categoria) < ordenCat(mp.categoria) ||
           (ordenCat(mejor.categoria) === ordenCat(mp.categoria) && mejor.puesto <= mp.puesto));
-        if (!peor) mejor = { puesto: mp.puesto, categoria: mp.categoria, nombre: r.name, uid: r.uid, cuando: p.fechaTxt, torneo: p.torneo, marcador: p.marcador };
+        if (!peor) mejor = { puesto: mp.puesto, categoria: mp.categoria, nombre: r.name, uid: r.uid, cuando: cuandoEs(p), torneo: p.torneo, marcador: p.marcador };
       });
     });
     if (mejor) {
@@ -1410,8 +1424,10 @@ function vJugador(app) {
     carrera.forEach(function (p) {
       p.rivales.forEach(function (r) {
         const k = r.uid || r.name;
-        const x = riv[k] || (riv[k] = { uid: r.uid, nombre: r.name, g: 0, p: 0 });
+        const x = riv[k] || (riv[k] = { uid: r.uid, nombre: r.name, g: 0, p: 0, dobles: 0, cruces: [] });
         if (p.gane) x.g++; else x.p++;
+        if (esDobles(p)) x.dobles++;
+        x.cruces.push(p);
       });
     });
     const top = Object.keys(riv).map(function (k) { return riv[k]; })
@@ -1426,10 +1442,27 @@ function vJugador(app) {
         barra.appendChild(el('i')).style.width = Math.round(r.g / (r.g + r.p) * 100) + '%';
         f.appendChild(barra);
         f.appendChild(el('span', 'cifra', r.g + '-' + r.p));
-        if (r.uid) f.onclick = function () { ir({ vista: 'jugador', uid: r.uid }); };
+        f.appendChild(el('span', 'chev', '›'));
+        f.setAttribute('aria-expanded', 'false');
+        f.setAttribute('aria-label', 'Ver los ' + (r.g + r.p) + ' partidos contra ' + r.nombre);
+        // Un 0-8 sin detalle no se puede creer ni discutir. Al tocar se abren los
+        // cruces con fecha y marcador, y ahí mismo está el link a su perfil: el
+        // botón ya no navega, porque el dato interesa más que el salto.
+        const det = el('div', 'cruces'); det.hidden = true;
+        f.onclick = function () {
+          const abierto = f.getAttribute('aria-expanded') === 'true';
+          caja.querySelectorAll('.h2h').forEach(function (o) { o.setAttribute('aria-expanded', 'false'); });
+          caja.querySelectorAll('.cruces').forEach(function (o) { o.hidden = true; });
+          if (abierto) return;
+          f.setAttribute('aria-expanded', 'true');
+          if (!det.childNodes.length) pintarCruces(det, r, j);
+          det.hidden = false;
+        };
         caja.appendChild(f);
+        caja.appendChild(det);
       });
       app.appendChild(caja);
+      app.appendChild(el('div', 'nota', 'Ordenados por cantidad de partidos. Toca un rival para ver cada cruce con su fecha y marcador.'));
     }
 
     app.appendChild(el('h2', null, 'Carrera'));
@@ -1437,7 +1470,7 @@ function vJugador(app) {
     carrera.slice(0, 40).forEach(function (p) {
       const row = el('div', 'li');
       const nm = el('span', 'nm');
-      nm.appendChild(el('small', null, esc(p.fechaTxt + ' · ' + p.torneo)));
+      nm.appendChild(el('small', null, esc(cuandoEs(p) + ' · ' + p.torneo)));
       nm.appendChild(document.createTextNode(p.gane ? 'Ganó a ' : 'Perdió con '));
       nm.appendChild(nodoJugadores(p.rivales, ''));
       row.appendChild(nm);
@@ -1596,6 +1629,60 @@ function nombreTorneo(tid) {
   // están en el catálogo: ahí se usa su nombre tal cual, acortado.
   return n ? nombreCorto(n.name, n.startDate) : 'Torneo ' + tid;
 }
+function esDobles(p) { return (p.rivales || []).length > 1 || (p.mios || []).length > 1; }
+// "25 jul 2026": se ubica en el tiempo más rápido que 25/7/2026. Cuando r2sports
+// no publica el día del partido no se inventa uno: queda solo el mes.
+function cuandoEs(p) {
+  const d = p.fecha;
+  if (!d || isNaN(d)) return p.fechaTxt || '';
+  const mes = MES_ES[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear();
+  return p.aprox ? mes : d.getDate() + ' ' + mes;
+}
+// El detalle de un cara a cara. Un "0-8" sin fechas ni marcadores no se puede
+// creer ni discutir; acá está cada partido. Y separa singles de dobles, porque
+// sumados en una sola cifra parecía que los ocho habían sido mano a mano.
+function pintarCruces(cont, r, j) {
+  const total = r.g + r.p, dob = r.dobles, sin = total - dob;
+  const partes = [];
+  if (sin) partes.push(sin + (sin === 1 ? ' en singles' : ' en singles'));
+  if (dob) partes.push(dob + (dob === 1 ? ' en dobles' : ' en dobles'));
+  const titulo = r.g === 0 ? 'Nunca le ha ganado: ' + r.p + (r.p === 1 ? ' partido' : ' partidos')
+    : r.p === 0 ? 'Le ganó ' + (r.g === 1 ? 'la única vez' : 'las ' + r.g + ' veces')
+      : 'Ganó ' + r.g + ' y perdió ' + r.p;
+  cont.appendChild(el('div', 'tot', esc(titulo + ' · ' + partes.join(' · '))));
+  r.cruces.slice().sort(function (a, b) { return (b.fecha || 0) - (a.fecha || 0); }).forEach(function (p) {
+    const fila = el('div', 'res');
+    fila.appendChild(el('span', 'gp' + (p.gane ? '' : ' mala'), p.gane ? 'G' : 'P'));
+    const t = el('span', 'txt');
+    t.appendChild(el('span', 'mc', esc(p.marcador || (p.gane ? 'Ganó' : 'Perdió'))));
+    // La fase solo si r2sports la nombra de verdad. En el histórico viene como
+    // "Rnd: 4 (2", que no dice nada, y en llaves numeradas tampoco.
+    const nr = ronda(p.ronda);
+    const fase = p.ronda && nr.orden >= 80 ? nr.nombre : '';
+    t.appendChild(el('span', 'dd', esc([cuandoEs(p), p.torneo,
+      p.division ? nombreDiv(p.division) : '', fase].filter(Boolean).join(' · '))));
+    if (esDobles(p)) {
+      const conmigo = (p.mios || []).filter(function (x) { return x.name && String(x.uid) !== String(j.uid); });
+      const linea = el('span', 'dd');
+      linea.appendChild(document.createTextNode('En dobles'));
+      if (conmigo.length) {
+        linea.appendChild(document.createTextNode(', con '));
+        linea.appendChild(nodoJugadores(conmigo, ''));
+      }
+      linea.appendChild(document.createTextNode(' vs '));
+      linea.appendChild(nodoJugadores(p.rivales, ''));
+      t.appendChild(linea);
+    }
+    fila.appendChild(t);
+    cont.appendChild(fila);
+  });
+  if (dob) cont.appendChild(el('div', 'tot', 'En los dobles el resultado es de la pareja, no solo entre ellos dos.'));
+  if (r.uid) {
+    const b = el('button', 'verperfil', 'Ver el perfil de ' + esc(r.nombre) + ' ›');
+    b.onclick = function (e) { e.stopPropagation(); ir({ vista: 'jugador', uid: r.uid }); };
+    cont.appendChild(b);
+  }
+}
 function carreraDe(j) {
   const uids = [j.uid].concat(j.uidFusionados || []).filter(Boolean).map(String);
   const P = (HIST && HIST.partidos) || [];
@@ -1619,14 +1706,16 @@ function carreraDe(j) {
       const rivales = gane ? l2 : l1;
       const k = clave(tid, rivales, m.marcador);
       if (visto[k]) return;
-      visto[k] = true;
-      const d = fechaDe(m.day, m.time, t) || mdy((t.tournament || {}).endDate) || mdy((t.tournament || {}).startDate);
-      out.push({
-        gane: gane, rivales: rivales, marcador: m.marcador || '',
-        torneo: nombreTorneo(tid), tid: tid, fecha: d,
+      const exacta = fechaDe(m.day, m.time, t);
+      const d = exacta || mdy((t.tournament || {}).endDate) || mdy((t.tournament || {}).startDate);
+      const reg = {
+        gane: gane, rivales: rivales, mios: gane ? l1 : l2, marcador: m.marcador || '',
+        torneo: nombreTorneo(tid), tid: tid, fecha: d, aprox: !exacta,
         fechaTxt: d ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : '',
-        division: m.division
-      });
+        division: m.division, ronda: m.round
+      };
+      visto[k] = reg;
+      out.push(reg);
     });
   });
   P.forEach(function (m) {
@@ -1637,12 +1726,24 @@ function carreraDe(j) {
     const d = m.date ? new Date(m.date) : null;
     const rivales = enG ? per : gan;
     const k = clave(m.tid, rivales, m.marcador);
-    if (visto[k]) return;
+    const ya = visto[k];
+    if (ya) {
+      // El torneo descargado no siempre trae el día del partido y ahí la fecha cae
+      // al último día del torneo. El histórico sí trae el día exacto: se corrige,
+      // que ahora la fecha se muestra partido por partido en el cara a cara.
+      if (ya.aprox && d && !isNaN(d)) {
+        ya.fecha = d; ya.aprox = false;
+        ya.fechaTxt = d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+      }
+      return;
+    }
     visto[k] = true;
     out.push({
-      gane: enG, rivales: rivales, marcador: m.marcador || '',
+      gane: enG, rivales: rivales, mios: enG ? gan : per, marcador: m.marcador || '',
       torneo: nombreTorneo(m.tid), tid: m.tid, fecha: d,
       fechaTxt: d && !isNaN(d) ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : (m.date || '')
+      // El "round" del histórico viene crudo ("Rnd: 4 (2") y no dice la fase, así
+      // que no se muestra. La division tampoco viene en esa fuente.
     });
   });
   return out.sort(function (a, b) { return (b.fecha || 0) - (a.fecha || 0); });
