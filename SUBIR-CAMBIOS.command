@@ -33,14 +33,31 @@ fi
 echo
 echo "-> Revisando si GitHub tiene commits que no están acá..."
 if git fetch origin main 2>/tmp/rqfetch.err; then
-  if [ -n "$(git log --oneline HEAD..FETCH_HEAD 2>/dev/null)" ]; then
-    echo
-    echo "   !! GitHub tiene cambios que no tienes localmente:"
-    git log --oneline HEAD..FETCH_HEAD | sed 's/^/      /'
-    echo "   No subo nada para no pisarlos. Avísame y los integramos primero."
-    read -p "Enter para cerrar."; exit 1
+  PENDIENTES_REMOTOS=$(git log --oneline HEAD..FETCH_HEAD 2>/dev/null)
+  if [ -n "$PENDIENTES_REMOTOS" ]; then
+    echo "   GitHub tiene commits nuevos:"
+    echo "$PENDIENTES_REMOTOS" | sed 's/^/      /'
+    # El bot que actualiza los datos cada 10 minutos solo toca data/. Eso se
+    # integra solo, dando prioridad a lo que hay acá, que es lo recién generado.
+    # Si el remoto tocó código, ahí sí hay que mirarlo a mano.
+    TOCADO=$(git diff --name-only HEAD...FETCH_HEAD | grep -v '^data' | grep -v '^data.json$' || true)
+    if [ -n "$TOCADO" ]; then
+      echo
+      echo "   !! Esos commits cambian código, no solo datos:"
+      echo "$TOCADO" | sed 's/^/      /'
+      echo "   No subo nada para no pisarlos. Avísame y los integramos juntos."
+      read -p "Enter para cerrar."; exit 1
+    fi
+    echo "   Son solo actualizaciones de datos del bot: se integran automáticamente."
+    if ! git merge -X ours FETCH_HEAD -m "Integrar datos del bot" >/dev/null 2>&1; then
+      echo "   !! No se pudo integrar automáticamente. Avísame."
+      git merge --abort 2>/dev/null
+      read -p "Enter para cerrar."; exit 1
+    fi
+    echo "   Integrado."
+  else
+    echo "   Sin novedades en GitHub."
   fi
-  echo "   Sin conflictos."
 else
   echo "   (no pude consultar GitHub; sigo e intento subir)"
   sed 's/^/      /' /tmp/rqfetch.err 2>/dev/null | head -3
