@@ -25,7 +25,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   await espera(1500);
   console.log('jugadores cargados:', w.eval('JUG && JUG.jugadores ? JUG.jugadores.length : -1'));
-  for (const n of ['Jaime Mansilla', 'Nicolas Ahumada', 'Juan Martinez', 'Paula Mansilla', 'Rodrigo Salgado Q.', 'Joaquin Catalan']) {
+  for (const n of ['Jaime Mansilla', 'Nicolas Ahumada', 'Juan José Martínez Chavarri', 'Paula Mansilla', 'Rodrigo Salgado Jr.', 'Joaquin Catalán']) {
     const uid = w.eval('(function(){var j=(JUG.jugadores||[]).find(function(x){return x.nombre===' + JSON.stringify(n) + '}); return j?(j.uid||j.id):""})()');
     if (!uid) { console.log('NO ENCONTRADO', n); continue; }
     w.eval('ir({vista:"jugador",uid:' + JSON.stringify(String(uid)) + '})');

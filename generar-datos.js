@@ -15,6 +15,7 @@ const https = require('https');
 const http = require('http');
 const R2 = require(path.join(__dirname, 'parser.js'));
 const VB = require(path.join(__dirname, 'bracket.js'));
+const CORRIGE = require(path.join(__dirname, 'correcciones.js'));
 
 const BASE = 'https://www.r2sports.com/tourney';
 const UA = 'Mozilla/5.0 (compatible; CircuitoRacquetballChile/2.0; +https://github.com/fabmarti15/circuito-racquetball)';
@@ -124,6 +125,9 @@ function teamKey(a, b) { return [String(a || '').toLowerCase(), String(b || '').
 // Escribe solo si el contenido cambió (ignorando 'updatedAt') -> no commitea por timestamps.
 function stripTs(o) { var c = JSON.parse(JSON.stringify(o)); delete c.updatedAt; return c; }
 function writeIfChanged(file, obj) {
+  // Los nombres que r2sports dejó en blanco se vuelven a poner en cada bajada, si
+  // no, la próxima pisaría la corrección (ver correcciones.js).
+  try { CORRIGE.aplicar(obj, obj && obj.tid); } catch (e) { }
   var nextCmp = JSON.stringify(stripTs(obj));
   if (fs.existsSync(file)) {
     try { if (JSON.stringify(stripTs(JSON.parse(fs.readFileSync(file, 'utf8')))) === nextCmp) return false; } catch (e) { }

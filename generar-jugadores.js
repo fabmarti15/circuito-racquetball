@@ -43,6 +43,9 @@ const ALIAS = {
   'allan mccarthy': 'Allan Mc Carthy',
   'catalina escoca': 'Catalina Escoda',
   'juan jose martinez': 'Juan Martinez',
+  'juan jose martines': 'Juan Martinez',       // el PDF de la Federación lo escribió con s
+  'juan chavarri': 'Juan Martinez',
+  'juan jose chavarri': 'Juan Martinez',
   'francisca fuentes': 'Francica Fuentes',
   'bruno gonzales': 'Bruno Gonzalez'
 };
@@ -57,7 +60,14 @@ const ALIAS_EXACTO = {
 };
 // Dos cuentas de r2sports que son la misma persona (se inscribió dos veces).
 // La segunda se absorbe en la primera, incluidos sus partidos.
-const FUSIONAR_UID = { '642666': '636100' };
+//   642666 → 636100: Sinai Risso.
+//   627300 → 626232: "Juan Chavarri" de la 4ª fecha 2024 es Juan José Martínez
+//     Chavarri, que en el resto de los torneos está como "Juan Martinez".
+//     Confirmado por Fabián (su papá).
+const FUSIONAR_UID = { '642666': '636100', '627300': '626232' };
+// Nombre para mostrar cuando el de r2sports está incompleto. Solo cambia lo que se
+// lee en pantalla: el cruce con el ranking sigue usando los alias.
+const NOMBRE_A_MANO = { '626232': 'Juan José Martínez Chavarri' };
 // Personas distintas que un algoritmo uniría: nunca fusionar estos pares.
 const NO_UNIR = [
   ['rodrigo salgado jr', 'rodrigo salgado i'],
@@ -404,8 +414,27 @@ RK.categorias.forEach(function (cat) {
 const registro = Object.keys(porUid).map(function (u) { return porUid[u]; })
   .concat(Object.keys(sinUid).map(function (k) { return sinUid[k]; }));
 registro.forEach(function (r) {
+  // "N/A" es lo que escribe r2sports cuando el jugador no puso ciudad, y quedaba
+  // impreso tal cual bajo el nombre en el perfil.
+  r.ciudades = r.ciudades.filter(function (c) { return !/^n\/?a$/i.test(String(c).trim()); });
   r.ciudad = r.ciudades[0] || '';
   r.alias = Array.from(new Set(r.alias));
+  // Al fusionar dos cuentas, la misma categoría puede llegar dos veces: el PDF
+  // trae a Juan José en Singles Open como "Juan Jose Martinez" y otra vez como
+  // "Juan José Chavarrí". Se queda la fila con puntos y, si empatan, el mejor
+  // puesto.
+  const porCat = {};
+  r.ranking.forEach(function (x) {
+    const y = porCat[x.key];
+    if (!y || (x.pts || 0) > (y.pts || 0) || ((x.pts || 0) === (y.pts || 0) && x.puesto < y.puesto)) porCat[x.key] = x;
+  });
+  r.ranking = Object.keys(porCat).map(function (k) { return porCat[k]; });
+  // Al final, después de cruzar con el ranking: el nombre bonito no puede
+  // estropear el cruce, que se hace con los alias.
+  if (NOMBRE_A_MANO[r.uid]) {
+    if (r.alias.indexOf(r.nombre) < 0) r.alias.push(r.nombre);
+    r.nombre = NOMBRE_A_MANO[r.uid];
+  }
 });
 registro.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
 

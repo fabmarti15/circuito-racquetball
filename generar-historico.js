@@ -25,6 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const R2 = require(path.join(__dirname, 'parser.js'));
+const CORRIGE = require(path.join(__dirname, 'correcciones.js'));
 
 const BASE = 'https://www.r2sports.com/tourney';
 const UA = 'Mozilla/5.0 (compatible; CircuitoRacquetballChile/2.0; +https://github.com/fabmarti15/circuito-racquetball)';
@@ -79,6 +80,9 @@ function leerJSON(f, porDefecto) {
 }
 function escribir(f, obj) {
   fs.mkdirSync(path.dirname(f), { recursive: true });
+  // Igual que en generar-datos.js: las correcciones a mano se reaplican en cada
+  // bajada, porque esto pisa el archivo anterior (ver correcciones.js).
+  try { CORRIGE.aplicar(obj, null); } catch (e) { }
   fs.writeFileSync(f, JSON.stringify(obj));
 }
 function diasDesde(iso) {
