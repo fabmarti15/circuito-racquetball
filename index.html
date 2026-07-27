@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-11">
+<html lang="es" data-v="2026-07-27-12">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -304,6 +304,7 @@
   footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3);line-height:1.65}
   footer a{color:var(--green-2)}
   footer b{color:var(--ink-2);font-weight:700}
+  footer .act{margin-top:10px;padding-top:9px;border-top:1px solid var(--line-2)}
 </style>
 </head>
 <body>
@@ -341,6 +342,13 @@ function rangoEs(a, b) {
   return i.getDate() + ' ' + MES_ES[i.getMonth()].slice(0, 3) + ' - ' + f.getDate() + ' ' + MES_ES[f.getMonth()].slice(0, 3) + ' ' + f.getFullYear();
 }
 function hhmm(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+// Fecha y hora completas, en la hora del que mira. Va al pie, como última
+// actualización: arriba ocupaba una esquina entera para decir algo que no cambia.
+function fechaHora(iso) {
+  const d = new Date(iso);
+  if (!iso || isNaN(d.getTime())) return null;
+  return d.getDate() + ' ' + MES_ES[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear() + ', ' + hhmm(d) + ' h';
+}
 function haceCuanto(iso) {
   const d = new Date(iso), min = Math.round((Date.now() - d) / 60000);
   if (min < 1) return 'ahora';
@@ -472,10 +480,14 @@ function pintarHeader() {
     ctx.innerHTML = '<b>' + esc(nombreCorto(T.tournament.name, T.tournament.startDate)) + '</b>' + esc(rangoEs(T.tournament.startDate, T.tournament.endDate));
   } else if (activo && !(T && String(T.tid) === String(activo.tid) && terminado(T))) {
     ctx.innerHTML = '<span class="vivo"><i></i>en juego</span><br>' + esc(nombreCorto(activo.name, activo.startDate));
-  } else if (RK && RK.corte) {
-    ctx.innerHTML = 'ranking oficial<br>' + esc(RK.corte.etiqueta);
   }
-  hd.appendChild(ctx);
+  // Ya no dice "ranking oficial · junio 2026": era media pantalla de alto para un
+  // dato que no cambia en meses. Ahora vive en el pie, con la última actualización.
+  if (ctx.innerHTML) hd.appendChild(ctx);
+  // Sin marca, sin flecha y sin contexto no queda nada que mostrar: la barra se
+  // esconde entera en vez de dejar una franja vacía sobre el bloque verde.
+  const barra = hd.parentNode;
+  if (barra) barra.style.display = hd.children.length ? '' : 'none';
 }
 
 /* ---------- catálogo de campeonatos ---------- */
@@ -1947,8 +1959,13 @@ function pintarPie() {
     'Ranking: documento oficial de la Federación Chilena de Racquetball' + (RK && RK.corte ? ', corte <b>' + esc(RK.corte.etiqueta) + '</b>' : '') + '.'));
   p.appendChild(el('div', null,
     'Con torneo en curso los datos se revisan <b>cada 10 a 15 minutos</b> entre las 9 y las 23 horas. Sin torneo, <b>una vez por semana</b>. ' +
-    (T && T.updatedAt ? 'Última lectura: <b>' + esc(haceCuanto(T.updatedAt)) + '</b>. ' : '') +
     (activo ? 'Los horarios los publica la organización y pueden cambiar sin aviso.' : '')));
+  // La hora de la última bajada de datos. Se toma la más nueva entre el catálogo
+  // (lo que revisa el bot cada 10-15 min) y el torneo que se está mirando.
+  const cuando = [CAT && CAT.updatedAt, T && T.updatedAt]
+    .filter(Boolean).sort().pop();
+  const texto = cuando && fechaHora(cuando);
+  if (texto) p.appendChild(el('div', 'act', 'Última actualización: <b>' + esc(texto) + '</b> · ' + esc(haceCuanto(cuando))));
 }
 
 /* ---------- render ---------- */
