@@ -289,6 +289,9 @@ async function buildTournament(tid) {
   // Varones Open antes de jugarse la final). Preferimos no mostrar podio.
   let res = results;
 
+  // Índice de nombres de este torneo: lo usan tanto los horarios como los partidos
+  // jugados para resolver los uid.
+  const idxN = buildNameIndex(players);
   // horarios: reporte "upcoming" de todo el torneo
   let schedule = [], scheduleStatus = 'ok', startTimesReady = '';
   try {
@@ -297,7 +300,6 @@ async function buildTournament(tid) {
     // El reporte de horarios trae SOLO nombres. Se ligan a uid usando como universo
     // los inscritos de esa misma división: así "Rodrigo Salgado Jr." no se confunde
     // con su papá, y si el nombre igual queda dudoso se marca ambiguo en vez de mentir.
-    const idxN = buildNameIndex(players);
     const uidsPorDiv = {};
     players.forEach(function (p) {
       (p.divisions || []).forEach(function (d) {
@@ -336,11 +338,24 @@ async function buildTournament(tid) {
       d.matches.forEach(function (m) {
         const a = m.players[0] || null, b = m.players[1] || null;
         if (!a && !b) return;
+        // En dobles r2sports entrega "Fulano / Mengano" como un solo nombre sin uid,
+        // así que los partidos y las medallas de dobles quedaban sin dueño. Se
+        // parten y se resuelven contra los inscritos.
+        const ladoDe = function (x) {
+          if (!x) return [];
+          return String(x.name || '').split(' / ').map(function (uno) { return uno.trim(); }).filter(Boolean)
+            .map(function (uno, i) {
+              if (i === 0 && x.uid) return { uid: x.uid, name: uno };
+              const r = resolvePlayer(uno, idxN);
+              return { uid: r.uid || '', name: uno };
+            });
+        };
         matches.push({
           division: d.divisionEs, divisionRaw: d.division, divID: d.divID, combinedID: d.combinedID,
           round: m.round, day: m.day, time: m.time,
           ganador: a ? { uid: a.uid || '', name: a.name, loc: a.loc || '' } : null,
           perdedor: b ? { uid: b.uid || '', name: b.name, loc: b.loc || '' } : null,
+          lado1: ladoDe(a), lado2: ladoDe(b),
           marcador: m.rawScore || '', games: m.games || [], forfeit: !!m.forfeit
         });
       });

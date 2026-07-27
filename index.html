@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-01">
+<html lang="es" data-v="2026-07-27-02">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -543,8 +543,11 @@ function filaResultado(m, opts) {
   if (opts.badge) cat.appendChild(document.createTextNode(' · ' + opts.badge));
   cu.appendChild(cat);
   const g = m.ganador || {}, p = m.perdedor || {};
-  const dg = el('div', 'p gana'); dg.appendChild(nodoJugadores([g], g.name || '—', g.loc || ''));
-  const dp = el('div', 'p b'); dp.appendChild(nodoJugadores([p], p.name || '—', p.loc || ''));
+  // En dobles cada nombre de la pareja es su propio enlace.
+  const l1 = (m.lado1 && m.lado1.length) ? m.lado1 : [g];
+  const l2 = (m.lado2 && m.lado2.length) ? m.lado2 : [p];
+  const dg = el('div', 'p gana'); dg.appendChild(nodoJugadores(l1, g.name || '—', g.loc || ''));
+  const dp = el('div', 'p b'); dp.appendChild(nodoJugadores(l2, p.name || '—', p.loc || ''));
   cu.appendChild(dg); cu.appendChild(dp);
   if (m.marcador) cu.appendChild(el('div', 'marca-set', esc(m.marcador)));
   else if (m.forfeit) cu.appendChild(el('div', 'marca-set', 'Sin presentación'));
@@ -1313,13 +1316,16 @@ function vJugador(app) {
     const gan = carrera.filter(function (p) { return p.gane; }).length;
     let racha = 0, signo = null;
     for (const p of carrera) { if (signo === null) { signo = p.gane; racha = 1; } else if (p.gane === signo) racha++; else break; }
+    // Con la carrera bajada el récord es completo. Si no, igual puede haber
+    // partidos de los torneos descargados: eso no es sesgado por jugador, pero sí
+    // es parcial en el tiempo, y así se dice.
     const completo = !HIST || !HIST.uids || HIST.uids.indexOf(String(j.uid)) >= 0;
     const kp = el('div', 'kpis');
     // Sin la carrera bajada, el récord sale sesgado: solo aparecen los partidos
     // contra jugadores ya revisados. Juan Martinez mostraba 0-6 habiendo ganado
     // partidos. Mejor no mostrar el número que mostrarlo mal.
     if (!completo) {
-      app.appendChild(el('div', 'aviso', 'De este jugador todavía no bajamos su carrera completa, así que no mostramos su récord: saldría con solo una parte de sus partidos. Los que sí tenemos están más abajo.'));
+      app.appendChild(el('div', 'aviso', 'De este jugador todavía no bajamos su carrera completa: acá abajo están los partidos de las fechas que sí tenemos descargadas, pero pueden faltar torneos y por eso no mostramos su récord total.'));
     }
     [[gan + '-' + (carrera.length - gan), 'ganados y perdidos', ''],
      [Math.round(gan / carrera.length * 100) + '%', 'victorias', gan / carrera.length >= 0.5 ? 'buena' : 'mala'],
@@ -1570,14 +1576,47 @@ function carreraDe(j) {
   const uids = [j.uid].concat(j.uidFusionados || []).filter(Boolean).map(String);
   const P = (HIST && HIST.partidos) || [];
   const out = [];
+  const visto = {};
+  const clave = function (tid, rivales, marcador) {
+    return tid + '|' + (rivales || []).map(function (r) { return r.uid || r.name; }).sort().join('+') + '|' + (marcador || '');
+  };
+  // Primero los partidos de los torneos que ya están descargados: son los más
+  // frescos y existen incluso para jugadores cuya carrera todavía no bajamos.
+  // Franco Jimenez jugó el Nacional Junior y su perfil salía vacío porque solo se
+  // miraba el histórico.
+  Object.keys(cache).forEach(function (tid) {
+    const t = cache[tid];
+    ((t && t.matches) || []).forEach(function (m) {
+      const l1 = (m.lado1 && m.lado1.length) ? m.lado1 : (m.ganador ? [m.ganador] : []);
+      const l2 = (m.lado2 && m.lado2.length) ? m.lado2 : (m.perdedor ? [m.perdedor] : []);
+      const gane = l1.some(function (x) { return uids.indexOf(String(x.uid)) >= 0; });
+      const perdi = l2.some(function (x) { return uids.indexOf(String(x.uid)) >= 0; });
+      if (!gane && !perdi) return;
+      const rivales = gane ? l2 : l1;
+      const k = clave(tid, rivales, m.marcador);
+      if (visto[k]) return;
+      visto[k] = true;
+      const d = fechaDe(m.day, m.time, t) || mdy((t.tournament || {}).endDate) || mdy((t.tournament || {}).startDate);
+      out.push({
+        gane: gane, rivales: rivales, marcador: m.marcador || '',
+        torneo: nombreTorneo(tid), tid: tid, fecha: d,
+        fechaTxt: d ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : '',
+        division: m.division
+      });
+    });
+  });
   P.forEach(function (m) {
     const gan = m.ganador || [], per = m.perdedor || [];
     const enG = gan.some(function (x) { return uids.indexOf(String(x.uid)) >= 0; });
     const enP = per.some(function (x) { return uids.indexOf(String(x.uid)) >= 0; });
     if (!enG && !enP) return;
     const d = m.date ? new Date(m.date) : null;
+    const rivales = enG ? per : gan;
+    const k = clave(m.tid, rivales, m.marcador);
+    if (visto[k]) return;
+    visto[k] = true;
     out.push({
-      gane: enG, rivales: enG ? per : gan, marcador: m.marcador || '',
+      gane: enG, rivales: rivales, marcador: m.marcador || '',
       torneo: nombreTorneo(m.tid), tid: m.tid, fecha: d,
       fechaTxt: d && !isNaN(d) ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : (m.date || '')
     });

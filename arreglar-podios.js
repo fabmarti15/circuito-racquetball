@@ -56,3 +56,43 @@ if (sinResolver.length) {
   console.log(`Sin resolver (${sinResolver.length}), no estaban en la lista de inscritos:`);
   Array.from(new Set(sinResolver)).slice(0, 10).forEach(x => console.log('   ' + x));
 }
+
+// ---------- segunda parte: uid en los dos lados de cada partido jugado ----------
+// En dobles r2sports manda "Fulano / Mengano" como un solo nombre y sin uid, así que
+// los partidos y las medallas de dobles no eran de nadie: Franco Jimenez ganó la
+// consolación de dobles y su perfil aparecía vacío. Se parten los nombres y se
+// resuelven contra los inscritos del mismo torneo, sin volver a pedir nada a la red.
+let conLados = 0, ladosResueltos = 0;
+fs.readdirSync(DATA).filter(f => /^\d+\.json$/.test(f)).forEach(function (f) {
+  const file = path.join(DATA, f);
+  const T = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!(T.matches || []).length) return;
+  const idx = { full: {}, li: {} };
+  (T.players || []).forEach(function (p) {
+    if (!p.uid) return;
+    (idx.full[kFull(p.name)] = idx.full[kFull(p.name)] || []).push(p);
+    const l = kLI(p.name); if (l) (idx.li[l] = idx.li[l] || []).push(p);
+  });
+  const resolver = function (nombre) {
+    const c = (idx.full[kFull(nombre)] || []).length === 1 ? idx.full[kFull(nombre)]
+      : ((idx.li[kLI(nombre)] || []).length === 1 ? idx.li[kLI(nombre)] : null);
+    return c ? c[0].uid : '';
+  };
+  const ladoDe = function (x) {
+    if (!x) return [];
+    return String(x.name || '').split(' / ').map(s => s.trim()).filter(Boolean).map(function (uno, i) {
+      const uid = (i === 0 && x.uid) ? x.uid : resolver(uno);
+      if (uid) ladosResueltos++;
+      return { uid: uid, name: uno };
+    });
+  };
+  let cambio = false;
+  T.matches.forEach(function (m) {
+    if (m.lado1 && m.lado2) return;
+    m.lado1 = ladoDe(m.ganador);
+    m.lado2 = ladoDe(m.perdedor);
+    cambio = true;
+  });
+  if (cambio) { fs.writeFileSync(file, JSON.stringify(T)); conLados++; }
+});
+console.log(`Torneos con lados resueltos en sus partidos: ${conLados} · nombres con uid: ${ladosResueltos}`);

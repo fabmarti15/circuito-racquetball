@@ -208,7 +208,18 @@ function podiosDesdePartidos(T) {
     const final = porRonda[orden[0]].ms[0];
     const semis = orden[1] && porRonda[orden[1]].ms.length <= 2
       ? porRonda[orden[1]].ms.map(function (m) { return m.perdedor; }).filter(Boolean) : [];
-    salida.push({ nombre: b, campeon: final.ganador, segundo: final.perdedor, semis: semis });
+    const gente = function (m, cual) {
+      const lado = cual === 1 ? m.lado1 : m.lado2;
+      if (lado && lado.length) return lado;
+      const x = cual === 1 ? m.ganador : m.perdedor;
+      return x ? [x] : [];
+    };
+    const semisGente = (orden[1] && porRonda[orden[1]].ms.length <= 2)
+      ? porRonda[orden[1]].ms.reduce(function (a, m) { return a.concat(gente(m, 2)); }, []) : [];
+    salida.push({
+      nombre: b, campeon: final.ganador, segundo: final.perdedor, semis: semis,
+      ladoCampeon: gente(final, 1), ladoSegundo: gente(final, 2), ladoSemis: semisGente
+    });
   });
   return salida;
 }
@@ -225,10 +236,10 @@ function contarMedallas() {
     if ((T.matches || []).length) {
       podiosDesdePartidos(T).forEach(function (p) {
         const anota = function (lado, tipo, puesto) {
+          // lado viene como lista de personas: en dobles son dos, y cada una tiene
+          // su uid resuelto, así que la pareja campeona reparte dos oros.
           (lado || []).forEach(function (x) {
-            const uids = String(x.name || '').split(' / ').length > 1 ? [] : [x.uid];
-            (x.uid ? [x.uid] : []).forEach(function () {});
-            if (!x.uid) return;
+            if (!x || !x.uid) return;
             const uid = uidReal(x.uid);
             sumar(uid, tipo);
             (titulosPorUid[uid] = titulosPorUid[uid] || []).push({
@@ -237,9 +248,9 @@ function contarMedallas() {
             });
           });
         };
-        anota([p.campeon], 'gold', 1);
-        anota([p.segundo], 'silver', 2);
-        anota(p.semis, 'bronze', 3);
+        anota(p.ladoCampeon, 'gold', 1);
+        anota(p.ladoSegundo, 'silver', 2);
+        anota(p.ladoSemis, 'bronze', 3);
       });
       return;
     }
