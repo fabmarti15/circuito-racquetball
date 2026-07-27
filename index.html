@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-09">
+<html lang="es" data-v="2026-07-27-10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -61,6 +61,21 @@
   .btn{border:1px solid var(--line);background:var(--card);color:var(--ink-2);border-radius:var(--radius);padding:11px 14px;font-size:14px;font-weight:600;width:100%}
   .btn:active{transform:translateY(1px)}
   .ic{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+  /* bloque de bienvenida del inicio. Es lo único con color fuerte en toda la web:
+     el resto sigue blanco y pastel a propósito. */
+  .hero{position:relative;overflow:hidden;margin:14px 0 4px;padding:18px 16px 17px;border-radius:16px;color:#fff;background:linear-gradient(135deg,var(--green) 0%,var(--green-2) 100%)}
+  .hero::after{content:'';position:absolute;right:-46px;top:-46px;width:168px;height:168px;border-radius:50%;background:rgba(255,255,255,.07)}
+  .hero>*{position:relative;z-index:1}
+  .hero h1{margin:0;font-size:23px;line-height:1.18;font-weight:800;letter-spacing:-.015em}
+  .hero .baja{margin:7px 0 15px;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.84);max-width:44ch}
+  .hero .buscar{margin-bottom:0}
+  .hero .buscar .lupa{color:var(--green-2)}
+  .hero input[type=search]{border-color:transparent;box-shadow:0 1px 2px rgba(0,0,0,.14)}
+  .hero input[type=search]:focus{outline:2px solid #fff;outline-offset:2px}
+  .hero .pista{margin-top:9px;font-size:12.5px;line-height:1.45;color:rgba(255,255,255,.82)}
+  .hero .nota{color:rgba(255,255,255,.8)}
+  @media(min-width:560px){ .hero{padding:24px 22px 22px} .hero h1{font-size:27px} }
 
   /* buscador */
   .buscar{position:relative;margin-bottom:6px}
@@ -667,6 +682,17 @@ function vInicio(app) {
     app.appendChild(tab);
     if (g.live.length) app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo: "en cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
   }
+
+  // ---- bienvenida ----
+  // Arriba solo se leía "Racquetball Chile · ranking oficial junio 2026" y después
+  // caían los podios: nadie sabía qué era esto ni que podía buscarse a sí mismo.
+  // El buscador es el mismo de la vista Jugadores, para no tener dos.
+  const hero = el('div', 'hero');
+  hero.appendChild(el('h1', null, 'Resultados de los últimos campeonatos'));
+  hero.appendChild(el('div', 'baja', 'Podios, llaves y el ranking oficial del circuito chileno de racquetball, fecha por fecha.'));
+  hero.appendChild(buscador('Busca tu nombre…', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
+  hero.appendChild(el('div', 'pista', 'Búscate a ti o a cualquier jugador: sus partidos, su puesto en el ranking y cómo le ha ido contra cada rival.'));
+  app.appendChild(hero);
 
   // ---- lo que de verdad importa: las últimas fechas con sus podios ----
   const fechas = catalogo().filter(function (t) { return t.estado !== 'upcoming'; }).slice(0, 3);
