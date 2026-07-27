@@ -288,21 +288,6 @@ async function buildTournament(tid) {
   // nombre proyectado del cabeza de serie (visto en TID 54324: daba campeón de
   // Varones Open antes de jugarse la final). Preferimos no mostrar podio.
   let res = results;
-  if (!res.available && statusOf(tournament) === 'finished') {
-    const derived = resultsFromBrackets(brackets, divisions, players);
-    if (derived.available) res = derived;
-  }
-
-  // inyectar resultados del jugador (para el torneo)
-  const fb = {};
-  res.divisions.forEach(function (d) {
-    d.placements.forEach(function (pl) {
-      pl.players.forEach(function (p) {
-        if (p.uid) (fb[p.uid] = fb[p.uid] || []).push({ division: d.nameEs || d.name, label: pl.label, rank: pl.rank });
-      });
-    });
-  });
-  players.forEach(function (p) { p.results = fb[p.uid] || []; });
 
   // horarios: reporte "upcoming" de todo el torneo
   let schedule = [], scheduleStatus = 'ok', startTimesReady = '';
@@ -375,6 +360,45 @@ async function buildTournament(tid) {
     if (!Object.keys(brackets || {}).length && Object.keys(previo.brackets || {}).length) brackets = previo.brackets;
     if (!res.available && (previo.results || {}).available) res = previo.results;
   }
+
+  // Podios: acá abajo porque necesita saber si quedó algo por jugar.
+  // Terminado por fecha, o dentro de sus fechas pero sin nada real por jugar: el
+  // "Final If" de la doble eliminación queda listado y nunca se juega.
+  const yaJugoTodo = schedule.filter(function (m) {
+    const reales = R2.strip(m.p1) && R2.strip(m.p2) &&
+      !/^(winner|loser|group|grupo|bye|tbd)\b/i.test(m.p1) && !/^(winner|loser|group|grupo|bye|tbd)\b/i.test(m.p2);
+    return (m.day && m.time) || reales;
+  }).length === 0 && matches.length > 0;
+  if (!res.available && (statusOf(tournament) === 'finished' || yaJugoTodo)) {
+    const derived = resultsFromBrackets(brackets, divisions, players);
+    if (derived.available) res = derived;
+  }
+  // El resumen oficial de viewResults trae los nombres SIN uid: por eso un tercer
+  // lugar de Juan Martinez no se le contaba a nadie. Se resuelven contra la lista
+  // de inscritos, que sí tiene uid.
+  const idxPodio = buildNameIndex(players);
+  res.divisions.forEach(function (d) {
+    (d.placements || []).forEach(function (pl) {
+      pl.players = (pl.players || []).map(function (x) {
+        if (x.uid) return x;
+        const r = resolvePlayer(x.name, idxPodio);
+        return r.uid ? { uid: r.uid, name: r.name || x.name } : x;
+      });
+    });
+  });
+
+  // inyectar resultados del jugador (para el torneo)
+  const fb = {};
+  res.divisions.forEach(function (d) {
+    d.placements.forEach(function (pl) {
+      pl.players.forEach(function (p) {
+        if (p.uid) (fb[p.uid] = fb[p.uid] || []).push({ division: d.nameEs || d.name, label: pl.label, rank: pl.rank });
+      });
+    });
+  });
+  players.forEach(function (p) { p.results = fb[p.uid] || []; });
+
+
 
   return {
     tid: String(tid),

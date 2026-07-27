@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-26-23">
+<html lang="es" data-v="2026-07-27-01">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -290,7 +290,7 @@ const qs = new URLSearchParams(location.search);
 let RUTA = { vista: 'inicio' };     // {vista, tid, cat, uid, sub}
 let T = null;                        // torneo abierto
 let CAT = null, JUG = null, RK = null, HIST = null, TNOM = null;
-let DIA = 'todo', RONDA = 0, CUADRO = false;
+let DIA = 'todo', RONDA = 0, CUADRO = false, CAT_PERFIL = '';
 // Qué fechas de la portada están desplegadas (por tid). Se conserva al repintar.
 const EXPANDIDAS = {};
 
@@ -1280,7 +1280,8 @@ function vJugador(app) {
     app.appendChild(el('h2', null, 'Últimos partidos'));
     const forma = el('div', 'forma');
     const panelForma = el('div', 'detalle'); panelForma.hidden = true;
-    carrera.slice(0, 12).reverse().forEach(function (p) {
+    // Del más nuevo al más viejo: el primero es el último partido jugado.
+    carrera.slice(0, 12).forEach(function (p) {
       const b = el('button', p.gane ? '' : 'p', p.gane ? 'G' : 'P');
       const quien = p.rivales.map(function (r) { return r.name; }).join(' / ');
       b.title = (p.gane ? 'Ganó a ' : 'Perdió con ') + quien + ' · ' + p.fechaTxt;
@@ -1306,7 +1307,7 @@ function vJugador(app) {
     });
     app.appendChild(forma);
     app.appendChild(panelForma);
-    app.appendChild(el('div', 'nota', 'Del más viejo al más nuevo. Toca uno para ver contra quién fue.'));
+    app.appendChild(el('div', 'nota', 'El primero es el más reciente. Toca uno para ver contra quién fue.'));
 
     // ---------- números ----------
     const gan = carrera.filter(function (p) { return p.gane; }).length;
@@ -1314,6 +1315,12 @@ function vJugador(app) {
     for (const p of carrera) { if (signo === null) { signo = p.gane; racha = 1; } else if (p.gane === signo) racha++; else break; }
     const completo = !HIST || !HIST.uids || HIST.uids.indexOf(String(j.uid)) >= 0;
     const kp = el('div', 'kpis');
+    // Sin la carrera bajada, el récord sale sesgado: solo aparecen los partidos
+    // contra jugadores ya revisados. Juan Martinez mostraba 0-6 habiendo ganado
+    // partidos. Mejor no mostrar el número que mostrarlo mal.
+    if (!completo) {
+      app.appendChild(el('div', 'aviso', 'De este jugador todavía no bajamos su carrera completa, así que no mostramos su récord: saldría con solo una parte de sus partidos. Los que sí tenemos están más abajo.'));
+    }
     [[gan + '-' + (carrera.length - gan), 'ganados y perdidos', ''],
      [Math.round(gan / carrera.length * 100) + '%', 'victorias', gan / carrera.length >= 0.5 ? 'buena' : 'mala'],
      [(signo ? '+' : '−') + racha, signo ? 'ganados seguidos' : 'perdidos seguidos', signo ? 'buena' : 'mala']]
@@ -1323,10 +1330,7 @@ function vJugador(app) {
         d.appendChild(el('span', null, esc(par[1])));
         kp.appendChild(d);
       });
-    app.appendChild(kp);
-    if (!completo) {
-      app.appendChild(el('div', 'aviso', 'Historial incompleto: de este jugador todavía no bajamos su carrera entera, así que acá solo están los partidos que aparecieron en la de otros. El número real puede ser distinto.'));
-    }
+    if (completo) app.appendChild(kp);
 
     // ---------- mejor victoria: el rival mejor rankeado al que le ganó ----------
     let mejor = null;
@@ -1359,15 +1363,26 @@ function vJugador(app) {
   }
 
   // ---------- evolución de puntos por categoría ----------
-  const conPuntos = j.ranking.filter(function (r) { return r.pts > 0; });
+  // Un solo gráfico: antes salían dos por categoría (puesto y puntos) y con cuatro
+  // categorías eran ocho gráficos, ilegible. Ahora se elige la categoría con chips.
+  const conPuntos = j.ranking.filter(function (r) { return r.pts > 0; })
+    .sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); });
   if (conPuntos.length) {
-    app.appendChild(el('h2', null, 'Evolución en el ranking'));
-    conPuntos.slice().sort(function (a, b) { return ordenCat(a.categoria) - ordenCat(b.categoria); }).forEach(function (r) {
-      const gp = graficoPuesto(r, j);
-      if (gp) app.appendChild(gp);
-      app.appendChild(grafico(r));
-    });
-    app.appendChild(el('div', 'nota', 'Los puntos son los del documento oficial de la Federación. El puesto fecha a fecha se calcula sumando esos mismos puntos hasta cada fecha, y el último coincide con el corte oficial.'));
+    app.appendChild(el('h2', null, 'Ranking oficial · cómo se movió'));
+    if (!CAT_PERFIL || !conPuntos.some(function (r) { return r.key === CAT_PERFIL; })) CAT_PERFIL = conPuntos[0].key;
+    if (conPuntos.length > 1) {
+      const chips = el('div', 'chips');
+      conPuntos.forEach(function (r) {
+        const b = el('button', 'chip', esc(nombreCat(r.categoria)));
+        b.setAttribute('aria-pressed', CAT_PERFIL === r.key);
+        b.onclick = function () { CAT_PERFIL = r.key; pintar(); };
+        chips.appendChild(b);
+      });
+      app.appendChild(chips);
+    }
+    const elegida = conPuntos.find(function (r) { return r.key === CAT_PERFIL; });
+    const gp = graficoPuesto(elegida, j);
+    app.appendChild(gp || grafico(elegida));
   }
 
   // ---------- por jugar ----------
@@ -1476,8 +1491,12 @@ function graficoPuesto(r, j) {
   const tit = el('div', 'tit');
   tit.appendChild(el('b', null, esc(nombreCat(r.categoria)) + ': cómo se movió'));
   const ini = conDato[0].puesto, fin = conDato[conDato.length - 1].puesto;
-  const dif = ini - fin;
-  tit.appendChild(el('span', 'delta' + (dif > 0 ? '' : dif < 0 ? ' baja' : ' igual'), dif > 0 ? '↑ subió ' + dif : dif < 0 ? '↓ bajó ' + (-dif) : 'se mantuvo'));
+  // La insignia mide la ÚLTIMA fecha, no todo el año: decir "bajó 1" a alguien que
+  // acaba de ganar un torneo no se entiende. El recorrido completo va en la nota.
+  const previo = conDato.length > 1 ? conDato[conDato.length - 2].puesto : fin;
+  const dif = previo - fin;
+  tit.appendChild(el('span', 'delta' + (dif > 0 ? '' : dif < 0 ? ' baja' : ' igual'),
+    dif > 0 ? '↑ subió ' + dif : dif < 0 ? '↓ bajó ' + (-dif) : 'sin cambio'));
   caja.appendChild(tit);
 
   const W = 300, H = 92, pad = 16;
@@ -1501,7 +1520,11 @@ function graficoPuesto(r, j) {
   });
   svg += '</svg>';
   caja.appendChild(el('div', null, svg));
-  caja.appendChild(el('div', 'nota', 'Terminó ' + fin + 'º de ' + conDato[conDato.length - 1].de + ' con puntos, que es el puesto del corte oficial.'));
+  const recorrido = ini === fin ? ('Se mantuvo ' + fin + 'º durante el año.')
+    : ('Empezó el año ' + ini + 'º y terminó ' + fin + 'º.');
+  caja.appendChild(el('div', 'nota', recorrido + ' La insignia de arriba mide solo la última fecha. ' +
+    'El corte es de ' + ((RK && RK.corte && RK.corte.etiqueta) || 'junio 2026') + ', así que todavía no incluye los torneos posteriores. ' +
+    'El puesto de cada fecha se calcula sumando los puntos oficiales hasta ahí, y el último coincide con el corte.'));
   return caja;
 }
 // Línea de puntos acumulados por fecha. SVG a mano: son seis puntos, no hace
@@ -1748,11 +1771,15 @@ async function arrancar() {
   CAT = cat; RK = rk;
   pintar();
   const objetivo = RUTA.tid || (torneoActivo() || {}).tid || (ultimoJugado() || {}).tid;
-  const [ju] = await Promise.all([json('./data/jugadores-circuito.json'), abrirTorneo(objetivo)]);
-  JUG = ju;
-  pintar();
-  const [hi, no] = await Promise.all([json('./data/historico.json'), json('./data/torneos-nombres.json')]);
-  HIST = hi; TNOM = no;
+  // El histórico se pide junto con el resto: si se dejaba para el final, el perfil
+  // alcanzaba a mostrar "cargando su carrera".
+  const [ju, hi, no] = await Promise.all([
+    json('./data/jugadores-circuito.json'),
+    json('./data/historico.json'),
+    json('./data/torneos-nombres.json'),
+    abrirTorneo(objetivo)
+  ]);
+  JUG = ju; HIST = hi; TNOM = no;
   pintar();
   precargarFechas();
 }

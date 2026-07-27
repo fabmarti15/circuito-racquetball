@@ -145,6 +145,73 @@ function noUnir(a, b) {
 function esConsolacion(nombre) {
   return /por puestos|consolation|consolaci|playoff|repechaje|#\d+/i.test(String(nombre || ''));
 }
+// Podio calculado desde los partidos, con las mismas reglas que muestra la web:
+// una categoría se parte en fases (grupos, playoff, consolación); define la que
+// tiene la última ronda jugada y no es consolación; campeón y segundo salen de esa
+// final, y el bronce son los que pierden la ronda anterior. Se hace así porque el
+// podio que deduce el parser de llaves no es confiable: en Juveniles B del Nacional
+// Junior empezaba en 3º, sin campeón.
+function baseCat(n) {
+  return String(n || '').replace(/\s+(Grupo|Group)\s*\d+.*$/i, '')
+    .replace(/\s+Por puestos.*$/i, '').replace(/\s*·?\s*Repechaje.*$/i, '')
+    .replace(/\s+#\d+$/, '').trim();
+}
+const PLACEHOLDER_N = /^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^[\s_·.-]*$/i;
+function realN(n) { return !PLACEHOLDER_N.test(String(n || '')); }
+function ordenRonda(label) {
+  const t = String(label || '').trim();
+  if (/^final$/i.test(t)) return { n: 'Final', o: 100 };
+  if (/final if|if necessary/i.test(t)) return { n: 'Final extra', o: 99 };
+  if (/3rd|third|tercer|4th/i.test(t)) return { n: 'Definición', o: 96 };
+  if (/semi/i.test(t)) return { n: 'Semifinales', o: 90 };
+  if (/qtr|quarter/i.test(t)) return { n: 'Cuartos', o: 80 };
+  let m = t.match(/(\d+)\s*'?s/);
+  if (m) return { n: 'Ronda de ' + m[1], o: 70 - (+m[1]) / 10 };
+  m = t.match(/rnd\s*(\d+)|round:?\s*(\d+)/i);
+  if (m) return { n: 'Fecha ' + (+(m[1] || m[2])), o: 10 + (+(m[1] || m[2])) };
+  return { n: t || 'Partidos', o: 50 };
+}
+function podiosDesdePartidos(T) {
+  const cats = {};
+  (T.matches || []).forEach(function (m) {
+    const b = baseCat(m.division);
+    const c = cats[b] || (cats[b] = { nombre: b, fases: {} });
+    (c.fases[m.division] = c.fases[m.division] || []).push(m);
+  });
+  const salida = [];
+  Object.keys(cats).forEach(function (b) {
+    const c = cats[b];
+    const nombres = Object.keys(c.fases);
+    const esSec = function (n) { return /por puestos|repechaje|consolaci/i.test(n); };
+    const conFinal = nombres.filter(function (n) {
+      return c.fases[n].some(function (m) { return ordenRonda(m.round).o >= 99; });
+    });
+    const fase = conFinal.filter(function (n) { return !esSec(n); })[0] || conFinal[0] ||
+      nombres.filter(function (n) { return !esSec(n) && !/grupo|group/i.test(n); })[0] || nombres[0];
+    if (!fase) return;
+    const ms = c.fases[fase].filter(function (m) {
+      return realN((m.ganador || {}).name) && realN((m.perdedor || {}).name);
+    });
+    if (!ms.length) return;
+    const porRonda = {};
+    ms.forEach(function (m) {
+      const r = ordenRonda(m.round);
+      (porRonda[r.n] = porRonda[r.n] || { o: r.o, ms: [] }).ms.push(m);
+    });
+    // Sin ronda "Final" (doble eliminación) la numerada más alta es la final.
+    if (!Object.keys(porRonda).some(function (n) { return /^Final/.test(n); })) {
+      const num = Object.keys(porRonda).filter(function (n) { return /^Fecha \d+$/.test(n); })
+        .sort(function (a, b2) { return porRonda[b2].o - porRonda[a].o; })[0];
+      if (num) porRonda[num].o = 100;
+    }
+    const orden = Object.keys(porRonda).sort(function (a, b2) { return porRonda[b2].o - porRonda[a].o; });
+    const final = porRonda[orden[0]].ms[0];
+    const semis = orden[1] && porRonda[orden[1]].ms.length <= 2
+      ? porRonda[orden[1]].ms.map(function (m) { return m.perdedor; }).filter(Boolean) : [];
+    salida.push({ nombre: b, campeon: final.ganador, segundo: final.perdedor, semis: semis });
+  });
+  return salida;
+}
 function contarMedallas() {
   const porUidM = {}, titulosPorUid = {};
   const sumar = function (uid, tipo) {
@@ -153,7 +220,30 @@ function contarMedallas() {
   };
   fs.readdirSync(DATA).filter(function (f) { return /^\d+\.json$/.test(f); }).forEach(function (f) {
     const T = leer(f, null);
-    if (!T || !T.results) return;
+    if (!T) return;
+    // Con partidos disponibles, el podio se calcula igual que en la web.
+    if ((T.matches || []).length) {
+      podiosDesdePartidos(T).forEach(function (p) {
+        const anota = function (lado, tipo, puesto) {
+          (lado || []).forEach(function (x) {
+            const uids = String(x.name || '').split(' / ').length > 1 ? [] : [x.uid];
+            (x.uid ? [x.uid] : []).forEach(function () {});
+            if (!x.uid) return;
+            const uid = uidReal(x.uid);
+            sumar(uid, tipo);
+            (titulosPorUid[uid] = titulosPorUid[uid] || []).push({
+              tid: T.tid, year: T.year, categoria: p.nombre, puesto: puesto,
+              label: puesto === 1 ? 'Campeón' : puesto === 2 ? 'Finalista' : 'Semifinal'
+            });
+          });
+        };
+        anota([p.campeon], 'gold', 1);
+        anota([p.segundo], 'silver', 2);
+        anota(p.semis, 'bronze', 3);
+      });
+      return;
+    }
+    if (!T.results) return;
     (T.results.divisions || []).forEach(function (d) {
       const nombre = d.nameEs || d.name || '';
       if (esConsolacion(nombre)) return;                     // la consolación no es podio
