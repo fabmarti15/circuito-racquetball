@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-12">
+<html lang="es" data-v="2026-07-27-13">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1968,12 +1968,45 @@ function pintarPie() {
   if (texto) p.appendChild(el('div', 'act', 'Última actualización: <b>' + esc(texto) + '</b> · ' + esc(haceCuanto(cuando))));
 }
 
+/* ---------- analítica ---------- */
+// Solo para saber si la gente entra y cuánto se queda. Umami Cloud: sin cookies,
+// sin IP guardada, sin saber quién es nadie, así que no hace falta banner de
+// consentimiento. Mientras UMAMI_ID esté vacío no se carga ningún script externo:
+// la web sigue siendo cero dependencias.
+//
+// Para encenderla: crear la cuenta gratis en umami.is, agregar el sitio
+// (fabmarti15.github.io) y pegar acá el "Website ID" que da el panel.
+const UMAMI_ID = '';
+let ultimaVista = '';
+function analiticaIniciar() {
+  if (!UMAMI_ID) return;
+  const s = document.createElement('script');
+  s.defer = true;
+  s.src = 'https://cloud.umami.is/script.js';
+  s.setAttribute('data-website-id', UMAMI_ID);
+  // La app navega por hash y Umami no cuenta eso solo: cada vista la avisa pintar().
+  s.setAttribute('data-auto-track', 'false');
+  s.onload = analiticaVista;
+  document.head.appendChild(s);
+}
+function analiticaVista() {
+  if (!UMAMI_ID || !window.umami) return;
+  const url = location.pathname + (location.hash || '#/');
+  if (url === ultimaVista) return;
+  ultimaVista = url;
+  // Un fallo de red o un bloqueador no pueden romper la página.
+  try {
+    window.umami.track(function (p) { return Object.assign({}, p, { url: url }); });
+  } catch (e) { /* da igual */ }
+}
+
 /* ---------- render ---------- */
 function pintar() {
   pintarTabs(); pintarHeader();
   const app = $('#app'); app.innerHTML = '';
   ({ inicio: vInicio, campeonatos: vCampeonatos, campeonato: vCampeonato, jugadores: vJugadores, jugador: vJugador, ranking: vRanking }[RUTA.vista] || vInicio)(app);
   pintarPie();
+  analiticaVista();
 }
 
 /* ---------- carga ---------- */
@@ -2034,6 +2067,7 @@ async function revisarVersion() {
   } catch (e) { /* sin conexión: no molestar */ }
 }
 async function arrancar() {
+  analiticaIniciar();
   RUTA = leerHash();
   if (window.RQ_DATA) {
     CAT = window.RQ_CAT || null; JUG = window.RQ_JUG || null; RK = window.RQ_RK || null;
