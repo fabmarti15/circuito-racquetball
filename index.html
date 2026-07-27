@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-07">
+<html lang="es" data-v="2026-07-27-08">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -266,6 +266,7 @@
   .cruces .gp.mala{background:var(--signal-soft);color:var(--signal)}
   .cruces .txt{flex:1;min-width:0}
   .cruces .mc{font-variant-numeric:tabular-nums;font-weight:700}
+  .cruces .mc.texto{font-variant-numeric:normal;font-weight:600;font-size:13.5px;color:var(--ink-2)}
   .cruces .dd{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500;margin-top:1px}
   .cruces .tot{font-size:12px;color:var(--ink-3);font-weight:600;padding:7px 0 2px}
   .cruces .verperfil{font-size:13px;font-weight:700;color:var(--green-2);background:none;border:0;padding:9px 0 2px;text-align:left;width:100%}
@@ -536,7 +537,8 @@ function filaPartido(m, opts) {
   const cu = el('div');
   const cat = el('div', 'm-cat');
   cat.appendChild(el('b', null, esc(m.division)));
-  if (m.round) cat.appendChild(document.createTextNode(' · ' + m.round));
+  // La fase en castellano: r2sports la rotula "Qtrs", "16's", "Rnd 5".
+  if (m.round) cat.appendChild(document.createTextNode(' · ' + ronda(m.round).nombre));
   cu.appendChild(cat);
   const a = el('div', 'p' + (esReal(m.p1) ? '' : ' tbd')); a.appendChild(nodoJugadores(m.lado1, m.p1));
   const b = el('div', 'p b' + (esReal(m.p2) ? '' : ' tbd')); b.appendChild(nodoJugadores(m.lado2, m.p2));
@@ -558,7 +560,8 @@ function filaResultado(m, opts) {
   const cu = el('div');
   const cat = el('div', 'm-cat');
   cat.appendChild(el('b', null, esc(m.division)));
-  if (m.round) cat.appendChild(document.createTextNode(' · ' + m.round));
+  // La fase en castellano: r2sports la rotula "Qtrs", "16's", "Rnd 5".
+  if (m.round) cat.appendChild(document.createTextNode(' · ' + ronda(m.round).nombre));
   if (opts.badge) cat.appendChild(document.createTextNode(' · ' + opts.badge));
   cu.appendChild(cat);
   const g = m.ganador || {}, p = m.perdedor || {};
@@ -568,8 +571,8 @@ function filaResultado(m, opts) {
   const dg = el('div', 'p gana'); dg.appendChild(nodoJugadores(l1, g.name || '—', g.loc || ''));
   const dp = el('div', 'p b'); dp.appendChild(nodoJugadores(l2, p.name || '—', p.loc || ''));
   cu.appendChild(dg); cu.appendChild(dp);
-  if (m.marcador) cu.appendChild(el('div', 'marca-set', esc(m.marcador)));
-  else if (m.forfeit) cu.appendChild(el('div', 'marca-set', 'Sin presentación'));
+  const txtMarca = marcadorTexto(m.marcador, null, m.forfeit);
+  if (txtMarca) cu.appendChild(el('div', 'marca-set', esc(txtMarca)));
   c.appendChild(cu);
   return c;
 }
@@ -852,6 +855,20 @@ function baseCategoria(n) {
 }
 // Nombre de división para mostrar: r2sports escribe "Singles Varones: Open".
 // Se saca el "Singles" (que es lo normal) y los dos puntos.
+// r2sports escribe "WBF - No Show", "WBF - Injury" o "WBF" a secas: Win By
+// Forfeit, ganar sin jugar. Fuera de r2sports nadie sabe qué significa, así que en
+// la web se cuenta con palabras. `gane` es desde el punto de vista de quien mira:
+// true ganó, false perdió, null no se sabe (ahí se narra desde el que ganó).
+function marcadorTexto(marcador, gane, forfeit) {
+  const s = String(marcador || '').trim();
+  const sinJugar = /wbf|forfeit|no show|walkover|injur/i.test(s) || (!s && forfeit);
+  if (!sinJugar) return s;
+  const perdio = gane === false;
+  if (/no show/i.test(s)) return perdio ? 'Perdió sin jugar: no llegó a la cancha' : 'Ganó sin jugar: el rival no llegó';
+  if (/injur/i.test(s)) return perdio ? 'Perdió sin jugar: se retiró lesionado' : 'Ganó sin jugar: el rival se retiró lesionado';
+  return perdio ? 'Perdió sin jugar' : 'Ganó sin jugar';
+}
+function esSinJugar(marcador, forfeit) { return marcadorTexto(marcador, null, forfeit).indexOf('sin jugar') >= 0; }
 function nombreDiv(n) {
   return String(n || '')
     .replace(/^Singles\s+/i, '')
@@ -1062,7 +1079,9 @@ function ronda(label) {
   let m = t.match(/(\d+)\s*'?s/);
   if (m) { const n = +m[1], NM = { 8: 'Cuartos', 16: 'Octavos', 32: '16avos', 64: '32avos' }; return { nombre: NM[n] || ('Ronda de ' + n), orden: 70 - n / 10 }; }
   m = t.match(/rnd\s*(\d+)|round:?\s*(\d+)/i);
-  if (m) { const n = +(m[1] || m[2]); return { nombre: 'Fecha ' + n, orden: 10 + n }; }
+  // "Rnd 5" es la quinta ronda del cuadro, no la quinta fecha del circuito: decir
+  // "Fecha 5" acá se confundía con las fechas del ranking.
+  if (m) { const n = +(m[1] || m[2]); return { nombre: 'Ronda ' + n, orden: 10 + n }; }
   return { nombre: t || 'Partidos', orden: 50 };
 }
 function esGrupo(nombre) { return /grupo|group|round robin/i.test(nombre); }
@@ -1320,7 +1339,8 @@ function vJugador(app) {
         const linea = el('div');
         linea.appendChild(document.createTextNode(p.gane ? 'Ganó a ' : 'Perdió con '));
         linea.appendChild(nodoJugadores(p.rivales, quien));
-        if (p.marcador) linea.appendChild(document.createTextNode(' · ' + p.marcador));
+        const mt = marcadorTexto(p.marcador, p.gane, p.forfeit);
+        if (mt) linea.appendChild(document.createTextNode(' · ' + mt));
         panelForma.appendChild(linea);
         panelForma.appendChild(el('div', 'cuando', esc(p.torneo + ' · ' + cuandoEs(p))));
         panelForma.hidden = false;
@@ -1371,7 +1391,7 @@ function vJugador(app) {
         if (!mp) return;
         const peor = mejor && (ordenCat(mejor.categoria) < ordenCat(mp.categoria) ||
           (ordenCat(mejor.categoria) === ordenCat(mp.categoria) && mejor.puesto <= mp.puesto));
-        if (!peor) mejor = { puesto: mp.puesto, categoria: mp.categoria, nombre: r.name, uid: r.uid, cuando: cuandoEs(p), torneo: p.torneo, marcador: p.marcador };
+        if (!peor) mejor = { puesto: mp.puesto, categoria: mp.categoria, nombre: r.name, uid: r.uid, cuando: cuandoEs(p), torneo: p.torneo, marcador: marcadorTexto(p.marcador, true, p.forfeit) };
       });
     });
     if (mejor) {
@@ -1465,7 +1485,7 @@ function vJugador(app) {
       nm.appendChild(document.createTextNode(p.gane ? 'Ganó a ' : 'Perdió con '));
       nm.appendChild(nodoJugadores(p.rivales, ''));
       row.appendChild(nm);
-      row.appendChild(el('span', 'meta', esc(p.marcador || '')));
+      row.appendChild(el('span', 'meta', esc(marcadorTexto(p.marcador, p.gane, p.forfeit))));
       lista2.appendChild(row);
     });
     app.appendChild(lista2);
@@ -1675,7 +1695,9 @@ function pintarCruces(cont, r, j) {
     const fila = el('div', 'res');
     fila.appendChild(el('span', 'gp' + (p.gane ? '' : ' mala'), p.gane ? 'G' : 'P'));
     const t = el('span', 'txt');
-    t.appendChild(el('span', 'mc', esc(p.marcador || (p.gane ? 'Ganó' : 'Perdió'))));
+    const sinJugar = esSinJugar(p.marcador, p.forfeit);
+    t.appendChild(el('span', 'mc' + (sinJugar ? ' texto' : ''),
+      esc(marcadorTexto(p.marcador, p.gane, p.forfeit) || (p.gane ? 'Ganó' : 'Perdió'))));
     // La fase solo si r2sports la nombra de verdad. En el histórico viene como
     // "Rnd: 4 (2", que no dice nada, y en llaves numeradas tampoco.
     const nr = ronda(p.ronda);
@@ -1730,6 +1752,7 @@ function carreraDe(j) {
       const d = exacta || mdy((t.tournament || {}).endDate) || mdy((t.tournament || {}).startDate);
       const reg = {
         gane: gane, rivales: rivales, mios: gane ? l1 : l2, marcador: m.marcador || '',
+        forfeit: !!m.forfeit,
         torneo: nombreTorneo(tid), tid: tid, fecha: d, aprox: !exacta,
         fechaTxt: d ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : '',
         division: m.division, ronda: m.round
@@ -1760,6 +1783,7 @@ function carreraDe(j) {
     visto[k] = true;
     out.push({
       gane: enG, rivales: rivales, mios: enG ? gan : per, marcador: m.marcador || '',
+      forfeit: !!m.forfeit,
       torneo: nombreTorneo(m.tid), tid: m.tid, fecha: d,
       fechaTxt: d && !isNaN(d) ? (d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear()) : (m.date || '')
       // El "round" del histórico viene crudo ("Rnd: 4 (2") y no dice la fase, así
