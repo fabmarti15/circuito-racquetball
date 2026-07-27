@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-03">
+<html lang="es" data-v="2026-07-27-04">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1470,8 +1470,20 @@ function evolucionPuesto(r, j) {
       return { nombre: p.nombre, pts: pts, jug: jug, yo: soyYo(p) };
     }).filter(function (p) { return p.pts > 0; })
       .sort(function (a, b) { return (b.pts - a.pts) || (a.jug - b.jug) || a.nombre.localeCompare(b.nombre, 'es'); });
+    // Puesto compartido en los empates, igual que el ranking oficial: nueve
+    // jugadores con 300 puntos y una fecha son todos 68º, no del 68º al 76º. Usar
+    // la posición cruda hacía que el último punto del gráfico (73º) no calzara con
+    // el puesto oficial (68º).
     const idx = tabla.findIndex(function (p) { return p.yo; });
-    salida.push({ nombre: f.nombre, puesto: idx < 0 ? null : idx + 1, de: tabla.length });
+    let puesto = null;
+    if (idx >= 0) {
+      const mio = tabla[idx];
+      const mejores = tabla.filter(function (p) {
+        return p.pts > mio.pts || (p.pts === mio.pts && p.jug < mio.jug);
+      }).length;
+      puesto = mejores + 1;
+    }
+    salida.push({ nombre: f.nombre, puesto: puesto, de: tabla.length });
   });
   return salida.filter(function (x, i) { return x.puesto || salida.slice(i).some(function (y) { return y.puesto; }); });
 }
