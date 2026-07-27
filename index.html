@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-04">
+<html lang="es" data-v="2026-07-27-05">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1390,8 +1390,9 @@ function vJugador(app) {
       app.appendChild(chips);
     }
     const elegida = conPuntos.find(function (r) { return r.key === CAT_PERFIL; });
-    const gp = graficoPuesto(elegida, j);
-    app.appendChild(gp || grafico(elegida));
+    // Siempre el puesto, nunca los puntos: en Open con una sola fecha aparecía la
+    // curva de puntaje ("+150") y se leía como si fuera su posición.
+    app.appendChild(graficoPuesto(elegida, j) || grafico(elegida));
   }
 
   // ---------- por jugar ----------
@@ -1506,7 +1507,7 @@ function graficoPuesto(r, j) {
   const ev = evolucionPuesto(r, j);
   if (!ev) return null;
   const conDato = ev.filter(function (x) { return x.puesto; });
-  if (conDato.length < 2) return null;
+  if (!conDato.length) return null;
 
   // La tarjeta completa lleva al ranking de esa categoría.
   const caja = el('button', 'graf puesto');
@@ -1516,19 +1517,21 @@ function graficoPuesto(r, j) {
   const ini = conDato[0].puesto, fin = conDato[conDato.length - 1].puesto;
   // La insignia mide la ÚLTIMA fecha, no todo el año: decir "bajó 1" a alguien que
   // acaba de ganar un torneo no se entiende. El recorrido completo va en la nota.
+  const unaSola = conDato.length === 1;
   const previo = conDato.length > 1 ? conDato[conDato.length - 2].puesto : fin;
   const dif = previo - fin;
-  tit.appendChild(el('span', 'delta' + (dif > 0 ? '' : dif < 0 ? ' baja' : ' igual'),
-    dif > 0 ? '↑ subió ' + dif : dif < 0 ? '↓ bajó ' + (-dif) : 'sin cambio'));
+  tit.appendChild(el('span', 'delta' + (unaSola ? ' igual' : dif > 0 ? '' : dif < 0 ? ' baja' : ' igual'),
+    unaSola ? 'una fecha' : dif > 0 ? '↑ subió ' + dif : dif < 0 ? '↓ bajó ' + (-dif) : 'sin cambio'));
   caja.appendChild(tit);
 
   const W = 300, H = 92, pad = 16;
   const peor = Math.max.apply(null, conDato.map(function (x) { return x.puesto; }));
   const mejor = Math.min.apply(null, conDato.map(function (x) { return x.puesto; }));
   const rango = Math.max(1, peor - mejor);
-  const x = function (i) { return pad + i * (W - pad * 2) / (ev.length - 1); };
-  // Eje invertido: el 1 va arriba, que es como se lee un ranking.
-  const y = function (p) { return pad + ((p - mejor) / rango) * (H - pad * 2); };
+  const x = function (i) { return ev.length > 1 ? pad + i * (W - pad * 2) / (ev.length - 1) : W / 2; };
+  // Eje invertido: el 1 va arriba, que es como se lee un ranking. Con un solo
+  // punto no hay recorrido, así que se dibuja al medio.
+  const y = function (p) { return unaSola ? H / 2 : pad + ((p - mejor) / rango) * (H - pad * 2); };
   const pts = ev.map(function (e, i) { return { i: i, e: e }; }).filter(function (o) { return o.e.puesto; });
   const linea = pts.map(function (o, k) { return (k ? 'L' : 'M') + x(o.i).toFixed(1) + ' ' + y(o.e.puesto).toFixed(1); }).join(' ');
   let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 22) + '" role="img" aria-label="Puesto fecha a fecha en ' + esc(nombreCat(r.categoria)) + '">';
@@ -1543,10 +1546,12 @@ function graficoPuesto(r, j) {
   });
   svg += '</svg>';
   caja.appendChild(el('div', null, svg));
-  const recorrido = ini === fin ? ('Se mantuvo ' + fin + 'º durante el año.')
-    : ('Empezó el año ' + ini + 'º y terminó ' + fin + 'º.');
+  const recorrido = unaSola
+    ? ('Sumó puntos en una sola fecha del año y quedó ' + fin + 'º.')
+    : ini === fin ? ('Se mantuvo ' + fin + 'º durante el año.')
+      : ('Empezó el año ' + ini + 'º y terminó ' + fin + 'º.');
   caja.appendChild(el('div', 'verpie', 'Ver el ranking completo de ' + esc(nombreCat(r.categoria)) + ' ›'));
-  caja.appendChild(el('div', 'nota', recorrido + ' La insignia de arriba mide solo la última fecha. ' +
+  caja.appendChild(el('div', 'nota', recorrido + (unaSola ? ' ' : ' La insignia de arriba mide solo la última fecha. ') +
     'El corte es de ' + ((RK && RK.corte && RK.corte.etiqueta) || 'junio 2026') + ', así que todavía no incluye los torneos posteriores. ' +
     'El puesto de cada fecha se calcula sumando los puntos oficiales hasta ahí, y el último coincide con el corte.'));
   return caja;
