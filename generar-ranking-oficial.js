@@ -24,16 +24,25 @@ const SALIDA = path.join(__dirname, 'data', 'ranking-oficial.json');
 const CORTE = { etiqueta: 'junio 2026', archivo: '02__Ranking_Junio_2026.pdf', fuente: 'Federación Chilena de Racquetball' };
 
 // Nombres de fecha legibles: en el PDF son abreviaturas y los rótulos vienen con
-// errores (dos "2DA", falta la "4TA", sufijos "24" en fechas de 2026).
+// errores (dos "2DA", falta la "4TA").
+//
+// `orden` es el orden DEL TIEMPO, no el de las columnas del PDF. El PDF pone las
+// dos fechas de 2026 primero y las de 2024 al final, así que la curva del ranking
+// se leía casi al revés. Los años están en el propio PDF: los rótulos de adultos
+// dicen "2DA TEMUCO 24", "3RA RANCAGUA 24", "5TA V. DEL MAR 24", "6TA LA SERENA 24",
+// y las dos sin sufijo son las de 2026. Los meses salen del índice de r2sports
+// (`data/index.json`): 45351 = ago 2024 (se jugó en Machalí), 46095 = oct 2024,
+// 46544 = nov 2024, 51723 = nov 2025, 54093 = abr 2026, 54277 = jun 2026.
+// La 2ª Temuco no está en r2sports: se sabe el año (2024), no el mes.
 const FECHAS = {
-  'F1 SCL': { corto: '1ª Santiago', orden: 1 },
-  'F2 SCL': { corto: '2ª Santiago', orden: 2 },
-  'F2 SCL 25': { corto: '2ª Santiago', orden: 2 },
-  'NAC JR': { corto: 'Nacional Junior', orden: 3 },
-  'TEM': { corto: '2ª Temuco', orden: 4 },
-  'RAN': { corto: '3ª Rancagua', orden: 5 },
-  'VDM': { corto: '5ª Viña del Mar', orden: 6 },
-  'LSE': { corto: '6ª La Serena', orden: 7 }
+  'TEM': { corto: '2ª Temuco 2024', etiqueta: '2024', orden: 1, tid: null },
+  'RAN': { corto: '3ª Rancagua 2024', etiqueta: 'ago 2024', orden: 2, tid: '45351' },
+  'VDM': { corto: '5ª Viña del Mar 2024', etiqueta: 'oct 2024', orden: 3, tid: '46095' },
+  'LSE': { corto: '6ª La Serena 2024', etiqueta: 'nov 2024', orden: 4, tid: '46544' },
+  'NAC JR': { corto: 'Nacional Junior 2025', etiqueta: 'nov 2025', orden: 5, tid: '51723' },
+  'F1 SCL': { corto: '1ª Santiago 2026', etiqueta: 'abr 2026', orden: 6, tid: '54093' },
+  'F2 SCL': { corto: '2ª Santiago 2026', etiqueta: 'jun 2026', orden: 7, tid: '54277' },
+  'F2 SCL 25': { corto: '2ª Santiago 2026', etiqueta: 'jun 2026', orden: 7, tid: '54277' }
 };
 
 function slug(s) {
@@ -91,8 +100,8 @@ texto.forEach(function (linea) {
   cab.forEach(function (h, i) {
     if (i === iNom || i === iCiu || i === iPts || i === iDef || i === iPdf) return;
     if (/orden real/i.test(h)) return;
-    const meta = FECHAS[h] || { corto: h, orden: 90 };
-    fechas.push({ col: h, nombre: meta.corto, orden: meta.orden, pts: num(c[i]) });
+    const meta = FECHAS[h] || { corto: h, etiqueta: h, orden: 90, tid: null };
+    fechas.push({ col: h, nombre: meta.corto, etiqueta: meta.etiqueta, tid: meta.tid || null, orden: meta.orden, pts: num(c[i]) });
   });
   fechas.sort(function (a, b) { return a.orden - b.orden; });
 
@@ -140,7 +149,7 @@ categorias.forEach(function (cat) {
   cat.total = cat.jugadores.length;
   cat.conPuntos = cat.jugadores.filter(function (p) { return p.pts > 0; }).length;
   cat.lider = cat.jugadores[0] ? { nombre: cat.jugadores[0].nombre, pts: cat.jugadores[0].pts } : null;
-  cat.fechas = (cat.jugadores[0] ? cat.jugadores[0].fechas : []).map(function (f) { return { col: f.col, nombre: f.nombre }; });
+  cat.fechas = (cat.jugadores[0] ? cat.jugadores[0].fechas : []).map(function (f) { return { col: f.col, nombre: f.nombre, etiqueta: f.etiqueta, tid: f.tid || null }; });
   // ¿El PDF venía realmente desordenado? Se mira si, siguiendo SU propio orden,
   // los puntos bajan de forma monótona. Comparar puesto contra puesto marcaría
   // como error cualquier empate reordenado por nuestro criterio, y no lo es.

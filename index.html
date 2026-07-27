@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-08">
+<html lang="es" data-v="2026-07-27-09">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -236,8 +236,8 @@
   .graf .tit{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
   .graf .tit b{font-size:15px;font-weight:800}
   .graf .tit span{margin-left:auto;font-size:12px;color:var(--ink-3)}
-  .graf svg{width:100%;height:112px;display:block;overflow:visible}
-  .graf.puesto svg{height:132px}
+  .graf svg{width:100%;height:124px;display:block;overflow:visible}
+  .graf.puesto svg{height:146px}
   .graf .delta{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--green-soft);color:var(--green-2)}
   .graf .delta.baja{background:var(--signal-soft);color:var(--signal)}
   .graf .delta.igual{background:#F1EFEA;color:var(--ink-3)}
@@ -1498,6 +1498,11 @@ function vJugador(app) {
 // que la posición intermedia se calcula sumando sus puntos oficiales hasta cada
 // fecha y ordenando la categoría completa con el mismo criterio de desempate. El
 // último punto coincide con el puesto oficial, que es la prueba de que calza.
+//
+// Las fechas vienen de `data/ranking-oficial.json` ya ordenadas por tiempo, no por
+// la posición de la columna en el PDF (ver el comentario de FECHAS en
+// generar-ranking-oficial.js). Esa es la única forma de que la curva se lea de
+// izquierda a derecha como pasó de verdad.
 function evolucionPuesto(r, j) {
   const C = ((RK && RK.categorias) || []).find(function (c) { return c.key === r.key; });
   if (!C || !C.fechas || C.fechas.length < 2) return null;
@@ -1507,8 +1512,17 @@ function evolucionPuesto(r, j) {
     return n === yo || (j.alias || []).some(function (a) { return norm(a) === n; });
   };
   if (!C.jugadores.some(soyYo)) return null;
+  // El PDF trae la grilla completa de fechas para todas las categorías, incluidas
+  // las que esa categoría no jugó o que la Federación todavía no puntuó (la 2ª
+  // Santiago 2026 está en 0 en Singles Open). Esas columnas dibujaban un tramo
+  // plano y hacían que la insignia dijera "sin cambio" en la última fecha.
+  const reales = C.fechas.map(function (f, i) { return i; }).filter(function (i) {
+    return C.jugadores.some(function (p) { return ((p.fechas || [])[i] || {}).pts; });
+  });
+  if (reales.length < 2) return null;
   const salida = [];
-  C.fechas.forEach(function (f, i) {
+  reales.forEach(function (i) {
+    const f = C.fechas[i];
     const tabla = C.jugadores.map(function (p) {
       let pts = 0, jug = 0;
       (p.fechas || []).slice(0, i + 1).forEach(function (x) { pts += (x.pts || 0); if (x.pts) jug++; });
@@ -1528,24 +1542,25 @@ function evolucionPuesto(r, j) {
       }).length;
       puesto = mejores + 1;
     }
-    salida.push({ nombre: f.nombre, puesto: puesto, de: tabla.length });
+    salida.push({ nombre: f.nombre, etiqueta: f.etiqueta, puesto: puesto, de: tabla.length });
   });
   return salida.filter(function (x, i) { return x.puesto || salida.slice(i).some(function (y) { return y.puesto; }); });
 }
-// Seis etiquetas no caben con el nombre completo de la ciudad: "6ª La Serena"
-// quedaba cortada en "6ª La". Se usan los códigos que ya usa la Federación.
-const CIUDAD_CORTA = {
-  santiago: 'SCL', temuco: 'TEM', rancagua: 'RAN', 'viña del mar': 'VDM',
-  'vina del mar': 'VDM', 'la serena': 'LSE', concepcion: 'CCP', 'concepción': 'CCP',
-  machali: 'MCH', valparaiso: 'VAP', 'valparaíso': 'VAP'
-};
-function fechaCorta(nombre) {
-  const m = String(nombre || '').match(/^(\d+ª)\s*(.*)$/);
-  if (!m) return String(nombre || '').slice(0, 9);
-  const ciudad = m[2].trim();
-  const cod = CIUDAD_CORTA[ciudad.toLowerCase()] ||
-    (/nacional/i.test(ciudad) ? 'NAC' : ciudad.slice(0, 3).toUpperCase());
-  return m[1] + ' ' + cod;
+// El eje va con mes y año ("ago 2024"), en dos líneas para que quepan siete. Antes
+// decía "1ª SCL" y "2ª TEM": nadie que no tenga el PDF al lado entiende eso, y
+// además el número de la fecha no dice cuál fue primero (la 2ª es de 2024 y la 1ª,
+// de 2026). El mes y el año salen de la fecha misma, no del nombre.
+function ejeFecha(f) {
+  const t = String((f && f.etiqueta) || (f && f.nombre) || '').trim();
+  const m = t.match(/^(\S+)\s+(\d{4})$/);
+  return m ? [m[1], m[2]] : [t.slice(0, 9)];
+}
+function textoEje(f, cx, y0, anclaje) {
+  const partes = ejeFecha(f);
+  return partes.map(function (linea, k) {
+    return '<text class="ejes" x="' + cx + '" y="' + (y0 + k * 11).toFixed(1) +
+      '" text-anchor="' + anclaje + '">' + esc(linea) + '</text>';
+  }).join('');
 }
 function graficoPuesto(r, j) {
   const ev = evolucionPuesto(r, j);
@@ -1578,7 +1593,7 @@ function graficoPuesto(r, j) {
   const y = function (p) { return unaSola ? H / 2 : pad + ((p - mejor) / rango) * (H - pad * 2); };
   const pts = ev.map(function (e, i) { return { i: i, e: e }; }).filter(function (o) { return o.e.puesto; });
   const linea = pts.map(function (o, k) { return (k ? 'L' : 'M') + x(o.i).toFixed(1) + ' ' + y(o.e.puesto).toFixed(1); }).join(' ');
-  let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 22) + '" role="img" aria-label="Puesto fecha a fecha en ' + esc(nombreCat(r.categoria)) + '">';
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 33) + '" role="img" aria-label="Puesto fecha a fecha en ' + esc(nombreCat(r.categoria)) + '">';
   svg += '<path d="' + linea + '" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
   pts.forEach(function (o, k) {
     const ultimo = k === pts.length - 1;
@@ -1586,18 +1601,24 @@ function graficoPuesto(r, j) {
     svg += '<text class="' + (ultimo ? 'fin' : 'puestos') + '" x="' + x(o.i).toFixed(1) + '" y="' + (y(o.e.puesto) - 11).toFixed(1) + '" text-anchor="middle">' + o.e.puesto + 'º</text>';
   });
   ev.forEach(function (e, i) {
-    svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (H + 14) + '" text-anchor="' + (i === 0 ? 'start' : i === ev.length - 1 ? 'end' : 'middle') + '">' + esc(fechaCorta(e.nombre)) + '</text>';
+    svg += textoEje(e, x(i).toFixed(1), H + 12, i === 0 ? 'start' : i === ev.length - 1 ? 'end' : 'middle');
   });
   svg += '</svg>';
   caja.appendChild(el('div', null, svg));
+  // Las etiquetas van en el texto porque el recorrido cruza años: "empezó el año
+  // 9º" era falso, el primer punto puede ser de 2024 y el último de 2026.
+  const desde = conDato[0].etiqueta || conDato[0].nombre;
+  const hasta = conDato[conDato.length - 1].etiqueta || conDato[conDato.length - 1].nombre;
   const recorrido = unaSola
-    ? ('Sumó puntos en una sola fecha del año y quedó ' + fin + 'º.')
-    : ini === fin ? ('Se mantuvo ' + fin + 'º durante el año.')
-      : ('Empezó el año ' + ini + 'º y terminó ' + fin + 'º.');
+    ? ('Sumó puntos en una sola fecha (' + esc(desde) + ') y quedó ' + fin + 'º.')
+    : ini === fin ? ('Se mantuvo ' + fin + 'º desde ' + esc(desde) + ' hasta ' + esc(hasta) + '.')
+      : ('En ' + esc(desde) + ' iba ' + ini + 'º y en ' + esc(hasta) + ' quedó ' + fin + 'º.');
   caja.appendChild(el('div', 'verpie', 'Ver el ranking completo de ' + esc(nombreCat(r.categoria)) + ' ›'));
-  caja.appendChild(el('div', 'nota', recorrido + (unaSola ? ' ' : ' La insignia de arriba mide solo la última fecha. ') +
-    'El corte es de ' + ((RK && RK.corte && RK.corte.etiqueta) || 'junio 2026') + ', así que todavía no incluye los torneos posteriores. ' +
-    'El puesto de cada fecha se calcula sumando los puntos oficiales hasta ahí, y el último coincide con el corte.'));
+  caja.appendChild(el('div', 'nota', recorrido +
+    ' Las fechas van de la más antigua a la más nueva, de izquierda a derecha. ' +
+    (unaSola ? '' : 'La insignia de arriba compara solo con la fecha anterior. ') +
+    'Cada punto es el puesto que tenía sumando sus puntos oficiales hasta esa fecha. ' +
+    'El corte del ranking es de ' + ((RK && RK.corte && RK.corte.etiqueta) || 'junio 2026') + ': los torneos posteriores todavía no cuentan.'));
   return caja;
 }
 // Línea de puntos acumulados por fecha. SVG a mano: son seis puntos, no hace
@@ -1612,20 +1633,20 @@ function grafico(r) {
   const fs = (r.fechas || []).filter(function (f) { return f.pts != null; });
   if (fs.length < 2) { caja.appendChild(el('div', 'nota', 'Una sola fecha con datos, no hay curva que mostrar.')); return caja; }
   let acum = 0;
-  const puntos = fs.map(function (f) { acum += (f.pts || 0); return { nombre: f.nombre, pts: f.pts || 0, acum: acum }; });
+  const puntos = fs.map(function (f) { acum += (f.pts || 0); return { nombre: f.nombre, etiqueta: f.etiqueta, pts: f.pts || 0, acum: acum }; });
   const maxA = acum || 1;
   const W = 300, H = 78, pad = 4;
   const x = function (i) { return pad + i * (W - pad * 2) / (puntos.length - 1); };
   const y = function (v) { return H - pad - (v / maxA) * (H - pad * 2); };
   const linea = puntos.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.acum).toFixed(1); }).join(' ');
   const area = linea + ' L' + x(puntos.length - 1).toFixed(1) + ' ' + (H - pad) + ' L' + x(0).toFixed(1) + ' ' + (H - pad) + ' Z';
-  let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 16) + '" role="img" aria-label="Puntos acumulados de ' + esc(nombreCat(r.categoria)) + '">';
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 27) + '" role="img" aria-label="Puntos acumulados de ' + esc(nombreCat(r.categoria)) + '">';
   svg += '<path d="' + area + '" fill="var(--green-soft)"/>';
   svg += '<path d="' + linea + '" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';
   puntos.forEach(function (p, i) {
     svg += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.acum).toFixed(1) + '" r="' + (p.pts ? 3.2 : 2) + '" fill="' + (p.pts ? 'var(--green)' : 'var(--ink-3)') + '"/>';
     if (p.pts) svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (y(p.acum) - 7).toFixed(1) + '" text-anchor="middle">+' + p.pts + '</text>';
-    svg += '<text class="ejes" x="' + x(i).toFixed(1) + '" y="' + (H + 10) + '" text-anchor="' + (i === 0 ? 'start' : i === puntos.length - 1 ? 'end' : 'middle') + '">' + esc(fechaCorta(p.nombre)) + '</text>';
+    svg += textoEje(p, x(i).toFixed(1), H + 10, i === 0 ? 'start' : i === puntos.length - 1 ? 'end' : 'middle');
   });
   svg += '</svg>';
   caja.appendChild(el('div', null, svg));
