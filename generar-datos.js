@@ -42,7 +42,7 @@ function revisarBloqueo(html) {
 // Fechas del Circuito Nacional de Chile en r2sports (descubiertas vía buscador
 // sportID=1&countryID=114). Editar/añadir aquí cuando haya nuevas fechas.
 const CIRCUITO = [
-  '54324', '54277', '54093',              // 2026
+  '54387', '54324', '54277', '54093',    // 2026
   '51723', '51161', '49498',              // 2025
   '46544', '46095', '45666', '45351'      // 2024
 ];
