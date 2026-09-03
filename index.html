@@ -188,6 +188,9 @@
   .card .l span{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:15px}
   .chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
   .chips::-webkit-scrollbar{display:none}
+  /* En el celular los chips se arrastran de lado; en pantalla ancha sobra espacio
+     y cortar la última categoría a media palabra ("Juve…") escondía el filtro. */
+  @media(min-width:560px){ .chips{flex-wrap:wrap;overflow-x:visible} }
   .chip{white-space:nowrap;padding:8px 13px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13.5px;font-weight:600;color:var(--ink-2)}
   .chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
   .dia{margin:20px 0 2px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--ink-2)}
@@ -390,7 +393,8 @@ function faltan(d) {
   if (min < 0) return null;
   if (min < 60) return 'en ' + min + ' min';
   const h = Math.floor(min / 60), r = min % 60;
-  return 'en ' + h + ' h' + (r ? ' ' + r : '');
+  // Los minutos con dos dígitos: "en 29 h 5" se leía como 29 h 5 min o 29:5.
+  return 'en ' + h + ' h' + (r ? ' ' + (r < 10 ? '0' + r : r) : '');
 }
 // Nombre corto para las tarjetas de la portada: lo que distingue a una fecha de
 // otra es CUÁNDO fue, no el rótulo burocrático ("SEGUNDA FECHA 2026 - CIRCUITO
