@@ -128,6 +128,19 @@
   }
 
   // ---------- eliminación ----------
+  // Además de los horarios se arma el árbol. La posición sale del propio orden
+  // del documento: r2sports dibuja la llave columna por columna (los 32avos
+  // completos, después los 16avos, después cuartos...) y dentro de cada columna
+  // de arriba hacia abajo. Con eso el partido `pos` de una columna alimenta al
+  // `floor(pos/2)` de la siguiente, que es lo que hace que el cuadro se vea como
+  // cuadro y no como una lista. El nivel se saca del número del código, que
+  // r2sports numera desde la final.
+  function nivelDeCodigo(n) {
+    if (!n || n < 1) return 0;
+    var k = 0, tope = 1;
+    while (n > tope) { k++; tope *= 2; }
+    return k;   // 0 final, 2 semis, 3 cuartos, 4 octavos...
+  }
   function parseElim(html, inscritos) {
     var cs = celdas(html), fichas = [];
     for (var i = 0; i < cs.length; i++) {
@@ -143,35 +156,88 @@
       }
       var t = texto(c.inner);
       var cod = /^([A-Za-z]{1,8}\s?\d{1,3})$/.exec(t) || /([A-Za-z]{1,8}\s?\d{1,3})\s*$/.exec(t);
-      var esCodigo = /viewAppMatch\(/.test(c.inner) || (cod && !/[a-z]{3,}/.test(t.replace(/\s?\d+$/, '')) && t.length <= 12);
+      // Una celda es "el partido" si trae el enlace del partido, o si su texto es
+      // solo el código, o si trae el código junto al día y la hora ("SA 6:20 PM
+      // MAB4"): en las rondas que todavía no se pueden jugar r2sports no pone
+      // enlace, y por el largo del texto se perdían columnas enteras (los cuartos
+      // de A Rojo y las semis de A Azul no aparecían).
+      var esCodigo = /viewAppMatch\(/.test(c.inner) ||
+        (cod && (/^[A-Za-z]{1,8}\s?\d{1,3}$/.test(t) || !!diaHora(c.inner)));
       if (esCodigo && cod) {
         var dh = diaHora(c.inner);
         // En rondas siguientes la hora va en la celda de al lado.
         if (!dh) { for (var k = i + 1; k <= i + 3 && k < cs.length; k++) { var d2 = diaHora(cs[k].inner); if (d2) { dh = d2; break; } } }
+        // Si ya se jugó, en vez de la hora hay un marcador ("11-9, 3-11, 11-8").
+        var mk = '';
+        for (var q = i; q <= i + 3 && q < cs.length; q++) {
+          var tq = texto(cs[q].inner);
+          if (/^\s*(\d{1,2}\s*-\s*\d{1,2}\s*,?\s*)+$/.test(tq) || /WBF|No\s*Show|Default|Forfeit/i.test(tq)) { mk = tq; break; }
+        }
         fichas.push({
           idx: c.idx, tipo: 'match', code: texto(cod[1]).replace(/\s+/g, ''),
-          day: dh ? dh.day : '', time: dh ? dh.time : ''
+          day: dh ? dh.day : '', time: dh ? dh.time : '', marcador: mk
         });
       }
     }
     fichas.sort(function (a, b) { return a.idx - b.idx; });
 
-    var out = [];
+    var todos = [], porNivel = {};
     for (var f = 0; f < fichas.length; f++) {
       if (fichas[f].tipo !== 'match') continue;
       var antes = null, despues = null, a, d;
       for (a = f - 1; a >= 0; a--) if (fichas[a].tipo === 'slot') { antes = fichas[a]; break; }
       for (d = f + 1; d < fichas.length; d++) if (fichas[d].tipo === 'slot') { despues = fichas[d]; break; }
       var n1 = antes ? antes.nombre : '', n2 = despues ? despues.nombre : '';
-      if (/^bye$/i.test(n1) || /^bye$/i.test(n2)) continue;   // un bye no es partido
+      var bye = /^bye$/i.test(n1) || /^bye$/i.test(n2);
       var num = parseInt(String(fichas[f].code).replace(/^[A-Za-z]+/, ''), 10);
-      out.push({
-        code: fichas[f].code, round: rondaDeCodigo(num),
-        day: fichas[f].day, time: fichas[f].time,
+      var niv = nivelDeCodigo(num);
+      var pos = (porNivel[niv] = (porNivel[niv] || 0)); porNivel[niv]++;
+      todos.push({
+        code: fichas[f].code, round: rondaDeCodigo(num), nivel: niv, pos: pos, bye: bye,
+        day: fichas[f].day, time: fichas[f].time, marcador: fichas[f].marcador || '',
         p1: expandir(limpiarCasillero(n1), inscritos), p2: expandir(limpiarCasillero(n2), inscritos)
       });
     }
-    return out;
+    return todos;
+  }
+
+  // Agrupa los partidos por columna del cuadro, de la primera ronda a la final.
+  // Los byes se quedan: ocupan su lugar en el árbol y el jugador que pasa sin
+  // jugar tiene que verse en la columna siguiente igual.
+  function nivelesDe(todos, inscritos) {
+    var map = {};
+    todos.forEach(function (m) { (map[m.nivel] = map[m.nivel] || []).push(m); });
+    var niv = Object.keys(map).map(Number).sort(function (a, b) { return b - a; })
+      .map(function (n) {
+        return {
+          nivel: n, nombre: RONDA[n] || ('ronda ' + n),
+          partidos: map[n].sort(function (a, b) { return a.pos - b.pos; })
+        };
+      });
+    // Los nombres de las rondas siguientes vienen abreviados y a veces son
+    // ambiguos: "C Escoda" son dos personas (Catalina y Cristina). El árbol lo
+    // resuelve sin adivinar: quien aparece en un casillero tuvo que salir del
+    // partido de abajo, así que se busca solo entre esos dos.
+    for (var i = 0; i + 1 < niv.length; i++) {
+      var hijos = niv[i].partidos, padres = niv[i + 1].partidos;
+      if (hijos.length !== padres.length * 2) continue;   // columna incompleta: no arriesgar
+      padres.forEach(function (pa, j) {
+        [['p1', hijos[2 * j]], ['p2', hijos[2 * j + 1]]].forEach(function (par) {
+          var campo = par[0], hijo = par[1];
+          if (!hijo || !pa[campo]) return;
+          var cand = [hijo.p1, hijo.p2].filter(Boolean);
+          if (!cand.length) return;
+          pa[campo] = expandir(pa[campo], cand);
+          if (cand.length === 1 && norm(pa[campo]) !== norm(cand[0])) {
+            // Con un solo candidato posible (el otro lado era un bye) el nombre
+            // completo es ese, aunque la abreviatura no calce letra por letra.
+            var t = norm(pa[campo]).split(' ');
+            if (t.length > 1 && norm(cand[0]).indexOf(t[t.length - 1]) >= 0) pa[campo] = cand[0];
+          }
+        });
+      });
+    }
+    return niv;
   }
 
   function parseBracketTimes(html, inscritos) {
@@ -182,9 +248,13 @@
       return { status: 'sin_llave', matches: [] };
     }
     var esRR = /Round Robin/i.test(h) && /viewDrawSwitchByPlayer|Participant Schedule|Versus/i.test(h);
-    var ms = esRR ? parseRR(h, inscritos) : parseElim(h, inscritos);
-    // Solo sirve lo que tiene hora: sin hora no se puede ordenar ni avisar.
-    ms = ms.filter(function (m) { return m.day && m.time; });
+    var todos = esRR ? parseRR(h, inscritos) : parseElim(h, inscritos);
+    // El cuadro se queda con todo (para dibujar el árbol); la agenda, solo con
+    // lo que tiene hora, porque sin hora no se puede ordenar ni avisar.
+    var cuadro = esRR
+      ? { tipo: 'rr', partidos: todos }
+      : { tipo: 'elim', niveles: nivelesDe(todos, inscritos) };
+    var ms = todos.filter(function (m) { return m.day && m.time && !m.bye; });
     // La llave es el único lugar donde el nombre largo de la división aparece
     // junto a su código: "(MAG) Men's Singles - A Gold". listAllDivs solo da el
     // código, así que los cuadros combinados (Oro/Azul/Rojo, consolaciones) se
@@ -192,7 +262,7 @@
     var tit = /\(([A-Za-z]{1,8})\)\s*([^<\n]{3,80}?)\s*(?:<|\n)/.exec(h);
     var titulo = tit ? texto(tit[2]) : '';
     if (!/singles|doubles|dobles/i.test(titulo)) titulo = '';
-    return { status: ms.length ? 'ok' : 'sin_horarios', matches: ms, fuente: 'llave', titulo: titulo };
+    return { status: ms.length ? 'ok' : 'sin_horarios', matches: ms, cuadro: cuadro, fuente: 'llave', titulo: titulo };
   }
 
   return parseBracketTimes;

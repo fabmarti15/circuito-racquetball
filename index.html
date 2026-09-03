@@ -286,6 +286,29 @@
   .cruces .verperfil{font-size:13px;font-weight:700;color:var(--green-2);background:none;border:0;padding:9px 0 2px;text-align:left;width:100%}
   .destacado{background:var(--green-soft);border-radius:var(--radius);padding:12px 13px;margin-top:10px;font-size:14.5px}
   .destacado b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--green-2);margin-bottom:3px}
+
+  /* cuadro en árbol. El truco es que cada partido ocupe una fracción igual del
+     alto de su columna: así un partido de la ronda siguiente, que son la mitad,
+     cae justo en la mitad entre sus dos alimentadores sin calcular nada en JS.
+     Las líneas son bordes de pseudo-elementos, no SVG. */
+  .arbol{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:12px;padding-bottom:6px}
+  .arbol-in{display:flex;gap:26px;min-width:min-content}
+  .ar-col{display:flex;flex-direction:column;min-width:172px}
+  .ar-rot{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:800;padding:0 0 7px 2px;position:sticky;left:0}
+  .ar-lista{display:flex;flex-direction:column;flex:1}
+  .ar-par{flex:1;display:flex;flex-direction:column;position:relative}
+  .ar-par::after{content:'';position:absolute;right:-13px;top:25%;bottom:25%;border-right:1.5px solid var(--line)}
+  .ar-p{flex:1;display:flex;align-items:center;position:relative}
+  .ar-col:not(:last-child) .ar-p::after{content:'';position:absolute;right:-13px;top:50%;width:13px;border-top:1.5px solid var(--line)}
+  .ar-col:not(:first-child) .ar-p::before{content:'';position:absolute;left:-13px;top:50%;width:13px;border-top:1.5px solid var(--line)}
+  .ar-card{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 9px;text-align:left;font:inherit;cursor:default}
+  .ar-card .j{font-size:13.5px;line-height:1.3;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ar-card .j.g{color:var(--ink);font-weight:700}
+  .ar-card .j.tbd{color:var(--ink-3);font-style:italic}
+  .ar-card .pie{font-size:11px;color:var(--ink-3);margin-top:3px;display:flex;justify-content:space-between;gap:8px}
+  .ar-card .pie .mk{color:var(--green-2);font-weight:700}
+  .ar-card.paso{border-style:dashed;background:transparent}
+  .ar-card.mio{border-color:var(--green-2);box-shadow:0 0 0 1.5px var(--green-2)}
   .prox{display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;margin-top:14px}
   .prox .tit{font-size:19px;font-weight:800;letter-spacing:-.025em;line-height:1.2;color:var(--ink);margin-top:1px}
   .prox .cuando{font-size:13px;color:var(--ink-2);margin-top:3px}
@@ -875,6 +898,9 @@ function vCampeonato(app) {
   app.appendChild(el('h1', null, tituloFecha(t)));
   app.appendChild(el('div', 'sub', [ciudadDe(t.venue), rangoEs(t.startDate, t.endDate), t.name].filter(Boolean).join(' · ')));
 
+  // "k:<divID>_<combinedID>" abre el cuadro nuevo (árbol). Sin prefijo sigue la
+  // vista vieja de ronda por ronda, que es la que sirve para las fechas antiguas.
+  if (RUTA.cat && RUTA.cat.indexOf('k:') === 0) return vistaCuadro(app, RUTA.cat.slice(2));
   if (RUTA.cat) return llaveCategoria(app, RUTA.cat);
 
   const g = clasificar(T);
@@ -930,8 +956,35 @@ function vCampeonato(app) {
     visibles.forEach(function (m) {
       const d = fechaDe(m.day, m.time, T), dk = d ? d.toDateString() : '';
       if (dk && dk !== dia) { dia = dk; app.appendChild(el('div', 'dia', DIA_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MES_ES[d.getMonth()])); }
-      app.appendChild(filaPartido(m, { live: g.live.indexOf(m) >= 0, dia: false }));
+      const fila = filaPartido(m, { live: g.live.indexOf(m) >= 0, dia: false, torneo: T });
+      // Desde cualquier partido se llega a su cuadro. Es el camino natural: ves
+      // "Juveniles B · octavos" y quieres ver el resto de la llave.
+      const kk = m.divID != null ? m.divID + '_' + m.combinedID : '';
+      if (kk && ((T.cuadros || {})[kk])) {
+        fila.style.cursor = 'pointer';
+        fila.onclick = function () { ir({ vista: 'campeonato', tid: T.tid, cat: 'k:' + kk }); };
+      }
+      app.appendChild(fila);
     });
+  }
+
+  // Los cuadros: hasta ahora solo se llegaba a una llave desde un podio, así que
+  // mientras la fecha no tuviera resultados el cuadro era inalcanzable.
+  const cus = cuadrosDe(T);
+  if (cus.length) {
+    app.appendChild(el('h2', null, 'Cuadros'));
+    const cont = el('div', 'cards');
+    cus.forEach(function (cu) {
+      const b = el('button', 'card');
+      const n = cu.tipo === 'rr' ? (cu.partidos || []).length
+        : (cu.niveles || []).reduce(function (a, x) { return a + x.partidos.filter(function (m) { return !m.bye; }).length; }, 0);
+      b.appendChild(el('div', 't', cu.tipo === 'rr' ? 'todos contra todos' : 'eliminación'));
+      b.appendChild(el('div', 'n', esc(nombreDiv(cu.nombre || cu.key))));
+      b.appendChild(el('div', 'd', n + (n === 1 ? ' partido' : ' partidos')));
+      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid, cat: 'k:' + cu.key }); };
+      cont.appendChild(b);
+    });
+    app.appendChild(cont);
   }
 
   const pods = podiosUnificados(T);
@@ -1183,20 +1236,161 @@ function bloquePodio(cat, alClic) {
 const ORDEN_RONDA = [
   [/^final$/i, 'Final', 100], [/final if|if necessary/i, 'Final extra', 99],
   [/3rd|third|tercer/i, 'Definición de puestos', 96], [/4th|cuarto lugar/i, 'Definición de puestos', 95],
-  [/semi/i, 'Semifinales', 90], [/qtr|quarter/i, 'Cuartos', 80]
+  [/semi/i, 'Semifinales', 90], [/qtr|quarter/i, 'Cuartos', 80],
+  // horarios-llaves.js rotula las rondas ya en castellano. Sin estas filas caían
+  // todas en el peso 50 por defecto y el cuadro salía con las columnas
+  // desordenadas: "Cuartos" a la izquierda de "Octavos".
+  [/^cuartos$/i, 'Cuartos', 80], [/^octavos$/i, 'Octavos', 70],
+  [/^16avos$/i, '16avos', 60], [/^32avos$/i, '32avos', 55], [/^64avos$/i, '64avos', 52],
+  [/^3er lugar$/i, 'Definición de puestos', 96]
 ];
 function ronda(label) {
   const t = String(label || '').trim();
   for (const r of ORDEN_RONDA) if (r[0].test(t)) return { nombre: r[1], orden: r[2] };
   let m = t.match(/(\d+)\s*'?s/);
   if (m) { const n = +m[1], NM = { 8: 'Cuartos', 16: 'Octavos', 32: '16avos', 64: '32avos' }; return { nombre: NM[n] || ('Ronda de ' + n), orden: 70 - n / 10 }; }
-  m = t.match(/rnd\s*(\d+)|round:?\s*(\d+)/i);
+  m = t.match(/rnd\s*(\d+)|round:?\s*(\d+)|fecha\s*(\d+)/i);
   // "Rnd 5" es la quinta ronda del cuadro, no la quinta fecha del circuito: decir
   // "Fecha 5" acá se confundía con las fechas del ranking.
-  if (m) { const n = +(m[1] || m[2]); return { nombre: 'Ronda ' + n, orden: 10 + n }; }
+  if (m) { const n = +(m[1] || m[2] || m[3]); return { nombre: 'Ronda ' + n, orden: 10 + n }; }
   return { nombre: t || 'Partidos', orden: 50 };
 }
 function esGrupo(nombre) { return /grupo|group|round robin/i.test(nombre); }
+/* ---------- cuadro en árbol ---------- */
+// `T.cuadros` viene de horarios-llaves.js: trae la llave con la POSICIÓN real del
+// sorteo (nivel + pos), que es lo que permite dibujarla como cuadro. La vista
+// vieja (ronda por ronda) sigue siendo el respaldo para las fechas antiguas, que
+// se guardaron sin esta estructura.
+function cuadrosDe(t) {
+  const c = (t && t.cuadros) || {};
+  return Object.keys(c).map(function (k) { return Object.assign({ key: k }, c[k]); })
+    .filter(function (x) { return x.tipo === 'rr' ? (x.partidos || []).length : (x.niveles || []).length; })
+    .sort(function (a, b) {
+      const sa = /por puestos/i.test(a.nombre || '') ? 1 : 0, sb = /por puestos/i.test(b.nombre || '') ? 1 : 0;
+      return (pesoCategoria(a.nombre || '') - pesoCategoria(b.nombre || '')) || (sa - sb) ||
+        String(a.nombre).localeCompare(String(b.nombre), 'es');
+    });
+}
+function nodoNombre(nombre, clase) {
+  if (!nombre) return el('div', 'j tbd', 'Por definir');
+  const d = el('div', 'j' + (clase ? ' ' + clase : ''));
+  // Se reusa nodoJugadores para que el nombre quede enlazado al perfil igual que
+  // en el resto de la web (y con el mismo estilo de botón).
+  d.appendChild(nodoJugadores(String(nombre).split(' / ').map(function (n) { return { name: n.trim() }; }), nombre));
+  return d;
+}
+function tarjetaCuadro(m, gana, torneo) {
+  const c = el('div', 'ar-card' + (m.bye ? ' paso' : ''));
+  const g = gana[m.nivel + '_' + m.pos] || '';
+  const marca = function (n) { return g && norm(n) && norm(n) === norm(g) ? 'g' : ''; };
+  // Un bye no es un partido: se dibuja con una sola línea. En un cuadro de 32
+  // con 18 inscritos hay 14 byes, y con dos líneas cada uno la primera columna
+  // era casi toda "Por definir".
+  if (m.bye) {
+    const solo = m.p1 || m.p2;
+    c.appendChild(nodoNombre(solo, 'g'));
+    c.appendChild(el('div', 'pie', 'pasa sin jugar'));
+    return c;
+  }
+  c.appendChild(nodoNombre(m.p1, marca(m.p1)));
+  c.appendChild(nodoNombre(m.p2, marca(m.p2)));
+  const pie = el('div', 'pie');
+  const d = fechaDe(m.day, m.time, torneo);
+  pie.appendChild(el('span', null, m.bye ? 'pasa sin jugar' : (d ? DIA_ES[d.getDay()].slice(0, 3) + ' ' + hhmm(d) : (m.time || ''))));
+  if (m.marcador) pie.appendChild(el('span', 'mk', esc(m.marcador)));
+  else if (m.code) pie.appendChild(el('span', null, esc(m.code)));
+  c.appendChild(pie);
+  return c;
+}
+// Quién ganó cada partido sin tener que leer marcadores: el que aparece en el
+// casillero del partido siguiente. Si el padre ya tiene nombre en el lado que
+// alimenta este partido, ése pasó.
+function ganadoresDe(niveles) {
+  const g = {};
+  for (let i = 0; i + 1 < niveles.length; i++) {
+    const hijos = niveles[i].partidos, padres = niveles[i + 1].partidos;
+    if (hijos.length !== padres.length * 2) continue;
+    padres.forEach(function (pa, j) {
+      if (pa.p1) g[niveles[i].nivel + '_' + (2 * j)] = pa.p1;
+      if (pa.p2) g[niveles[i].nivel + '_' + (2 * j + 1)] = pa.p2;
+    });
+  }
+  return g;
+}
+function arbolCuadro(cu, torneo) {
+  const cont = el('div', 'arbol');
+  const inner = el('div', 'arbol-in');
+  const niveles = cu.niveles || [];
+  const gana = ganadoresDe(niveles);
+  const mayor = niveles.reduce(function (a, n) { return Math.max(a, n.partidos.length); }, 1);
+  inner.style.height = Math.max(240, mayor * 72) + 'px';
+  niveles.forEach(function (nv, i) {
+    const col = el('div', 'ar-col');
+    col.appendChild(el('div', 'ar-rot', esc(nv.nombre)));
+    const lista = el('div', 'ar-lista');
+    const emparejar = i + 1 < niveles.length && nv.partidos.length > 1 &&
+      niveles[i + 1].partidos.length * 2 === nv.partidos.length;
+    if (emparejar) {
+      for (let k = 0; k < nv.partidos.length; k += 2) {
+        const par = el('div', 'ar-par');
+        [nv.partidos[k], nv.partidos[k + 1]].forEach(function (m) {
+          if (!m) return;
+          const casilla = el('div', 'ar-p');
+          casilla.appendChild(tarjetaCuadro(m, gana, torneo));
+          par.appendChild(casilla);
+        });
+        lista.appendChild(par);
+      }
+    } else {
+      nv.partidos.forEach(function (m) {
+        const casilla = el('div', 'ar-p');
+        casilla.appendChild(tarjetaCuadro(m, gana, torneo));
+        lista.appendChild(casilla);
+      });
+    }
+    col.appendChild(lista);
+    inner.appendChild(col);
+  });
+  cont.appendChild(inner);
+  return cont;
+}
+function vistaCuadro(app, key) {
+  const cu = ((T && T.cuadros) || {})[key];
+  if (!cu) { app.appendChild(el('div', 'vacio', 'No encontramos ese cuadro.')); return; }
+  app.appendChild(el('h2', null, esc(cu.nombre || key)));
+  if (cu.tipo === 'rr') {
+    // Round robin: no hay árbol que dibujar, son todos contra todos. Se muestra la
+    // tabla de posiciones si ya hay resultados y la lista de cruces con su hora.
+    const jug = ((T.matches || []).filter(function (m) { return baseCategoria(m.division) === baseCategoria(cu.nombre || ''); }));
+    const tabla = posicionesGrupo(jug);
+    if (tabla.length) {
+      const t = el('table', 'pos');
+      t.innerHTML = '<tr><th>Jugador</th><th>PJ</th><th>G</th><th>P</th><th>Sets</th></tr>';
+      tabla.forEach(function (r) {
+        const tr = el('tr');
+        const td = el('td'); td.appendChild(nodoJugadores([{ uid: r.uid, name: r.nombre }], r.nombre)); tr.appendChild(td);
+        [r.pj, r.g, r.p, r.setsG + '-' + r.setsP].forEach(function (v) { tr.appendChild(el('td', null, String(v))); });
+        t.appendChild(tr);
+      });
+      app.appendChild(t);
+    }
+    let ronda2 = '';
+    (cu.partidos || []).slice().sort(function (a, b) {
+      const da = fechaDe(a.day, a.time, T), db = fechaDe(b.day, b.time, T);
+      return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+    }).forEach(function (m) {
+      const r = ronda(m.round).nombre;
+      if (r !== ronda2) { ronda2 = r; app.appendChild(el('div', 'dia', esc(r))); }
+      app.appendChild(filaPartido({
+        division: cu.nombre, round: '', day: m.day, time: m.time,
+        p1: m.p1, p2: m.p2, lado1: [{ uid: (porNombre(m.p1) || {}).uid || '', name: m.p1 }], lado2: [{ uid: (porNombre(m.p2) || {}).uid || '', name: m.p2 }]
+      }, { torneo: T, dia: false }));
+    });
+    return;
+  }
+  app.appendChild(arbolCuadro(cu, T));
+  app.appendChild(el('div', 'nota', 'Se arrastra de lado. La posición es la del sorteo de r2sports; el nombre en negrita es quien pasó de ronda.'));
+}
 function llaveCategoria(app, nombre) {
   const cats = categoriasDelTorneo(T);
   const C = cats.find(function (x) { return x.nombre === nombre; });

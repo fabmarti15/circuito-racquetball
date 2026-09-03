@@ -276,7 +276,7 @@ async function buildTournament(tid) {
   // De la misma bajada se sacan los horarios: la llave trae la hora de cada
   // partido y es la única fuente cuando el director no ha activado el reporte
   // oficial. No se vuelve a pedir la página: r2sports bloquea por IP.
-  let brackets = {}, horariosLlave = {};
+  let brackets = {}, horariosLlave = {}, cuadros = {};
   await pool(divisions, CONCURRENCIA, async function (d) {
     const key = d.divID + '_' + d.combinedID;
     let p = { available: false, type: 'elim', rounds: [], entrants: [], standings: [], champion: '' };
@@ -291,6 +291,12 @@ async function buildTournament(tid) {
       }).map(function (x) { return x.name; });
       if (!insc.length) insc = players.map(function (x) { return x.name; });
       horariosLlave[key] = HL(htmlLlave, insc);
+      // El árbol del cuadro, con la posición real del sorteo. Se guarda aparte de
+      // `brackets` porque ese lo arma bracket.js desde los nombres ya jugados y se
+      // desarma cuando la llave todavía no tiene resultados.
+      if (horariosLlave[key].cuadro) {
+        cuadros[key] = Object.assign({ divID: d.divID, combinedID: d.combinedID, code: d.code }, horariosLlave[key].cuadro);
+      }
     } catch (e) { }
     brackets[key] = {
       title: d.name, titleEs: d.nameEs, drawType: d.drawType,
@@ -353,35 +359,42 @@ async function buildTournament(tid) {
   // at the time indicated below"), y mientras no lo active la web se quedaba sin
   // tablero de "En cancha / Siguiente" aunque r2sports ya publicara la hora de
   // cada partido dentro del cuadro. Pasó en la 3ª fecha 2026. Ver horarios-llaves.js.
-  if (!schedule.length) {
-    // El nombre lindo de la división ("Singles Juveniles B") solo está en la ficha
-    // de los inscritos; parseDivisions devuelve el código ("BJB").
-    const nombreDiv = {};
-    players.forEach(function (x) {
-      (x.divisions || []).forEach(function (dd) {
-        const k = dd.divID + '_' + dd.combinedID;
-        if (!nombreDiv[k]) nombreDiv[k] = { es: dd.divisionEs, raw: dd.division };
-      });
+  // El nombre lindo de la división ("Singles Juveniles B") solo está en la ficha
+  // de los inscritos; parseDivisions devuelve el código ("BJB"). Y las
+  // consolaciones son el código del principal con una "c" delante (cBJB de BJB),
+  // así que heredan el nombre del padre: tomándolo del título de la llave, la
+  // misma categoría salía dos veces ("Singles Juveniles B" y "Singles Niños:
+  // Juveniles B").
+  const nombreDiv = {};
+  players.forEach(function (x) {
+    (x.divisions || []).forEach(function (dd) {
+      const k = dd.divID + '_' + dd.combinedID;
+      if (!nombreDiv[k]) nombreDiv[k] = { es: dd.divisionEs, raw: dd.division };
     });
-    // Las consolaciones de r2sports son el código del cuadro principal con una
-    // "c" delante (cBJB de BJB, cMO de MO). Su nombre se toma prestado del padre
-    // en vez del título de la llave: si no, la misma categoría aparecía dos veces
-    // con dos nombres ("Singles Juveniles B" y "Singles Niños: Juveniles B").
-    const porCodigo = {};
-    divisions.forEach(function (d) { porCodigo[d.code] = d.divID + '_' + d.combinedID; });
+  });
+  const porCodigo = {};
+  divisions.forEach(function (d) { porCodigo[d.code] = d.divID + '_' + d.combinedID; });
+  const nombreDe = function (d) {
+    const key = d.divID + '_' + d.combinedID;
+    const hl = horariosLlave[key] || {};
+    const padre = /^c(.+)$/.test(d.code) ? nombreDiv[porCodigo[d.code.replace(/^c/, '')]] : null;
+    return nombreDiv[key] ||
+      (padre ? { es: padre.es + ' Por puestos', raw: padre.raw + ' Consolation' } : null) ||
+      (hl.titulo ? { es: R2.traducirCategoria(hl.titulo).replace(' - ', ': '), raw: hl.titulo } : { es: d.nameEs || d.name, raw: d.name });
+  };
+  divisions.forEach(function (d) {
+    const key = d.divID + '_' + d.combinedID;
+    if (cuadros[key]) { const n = nombreDe(d); cuadros[key].nombre = n.es; cuadros[key].nombreRaw = n.raw; }
+  });
+
+  if (!schedule.length) {
     const deLlave = [];
     divisions.forEach(function (d) {
       const key = d.divID + '_' + d.combinedID;
       const hl = horariosLlave[key];
       if (!hl || hl.status !== 'ok') return;
       const permitidos = uidsPorDiv[key];
-      // Los cuadros combinados (A Oro/Azul/Rojo, consolaciones) tienen un divID
-      // que ningún inscrito declara, así que su nombre sale del padre o, si no
-      // hay padre, del título de la llave.
-      const padre = /^c(.+)$/.test(d.code) ? nombreDiv[porCodigo[d.code.replace(/^c/, '')]] : null;
-      const nom = nombreDiv[key] ||
-        (padre ? { es: padre.es + ' Por puestos', raw: padre.raw + ' Consolation' } : null) ||
-        (hl.titulo ? { es: R2.traducirCategoria(hl.titulo).replace(' - ', ': '), raw: hl.titulo } : { es: d.nameEs || d.name, raw: d.name });
+      const nom = nombreDe(d);
       hl.matches.forEach(function (m) {
         deLlave.push({
           division: nom.es, divisionRaw: nom.raw, drawType: d.drawType,
@@ -490,6 +503,7 @@ async function buildTournament(tid) {
     players: players,
     results: res,
     brackets: brackets,
+    cuadros: cuadros,
     schedule: schedule,
     scheduleStatus: scheduleStatus,
     startTimesReady: startTimesReady,
