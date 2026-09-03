@@ -286,6 +286,10 @@
   .cruces .verperfil{font-size:13px;font-weight:700;color:var(--green-2);background:none;border:0;padding:9px 0 2px;text-align:left;width:100%}
   .destacado{background:var(--green-soft);border-radius:var(--radius);padding:12px 13px;margin-top:10px;font-size:14.5px}
   .destacado b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--green-2);margin-bottom:3px}
+  .prox{display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;margin-top:14px}
+  .prox .tit{font-size:19px;font-weight:800;letter-spacing:-.025em;line-height:1.2;color:var(--ink);margin-top:1px}
+  .prox .cuando{font-size:13px;color:var(--ink-2);margin-top:3px}
+  .prox .pie2{margin-top:9px;font-size:13px;font-weight:700;color:var(--green-2)}
 
   /* perfil */
   .ficha{display:flex;gap:13px;align-items:center;margin:16px 0 4px}
@@ -708,6 +712,26 @@ function vInicio(app) {
   hero.appendChild(buscador('Busca tu nombre…', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
   hero.appendChild(el('div', 'pista', 'Buscador de jugadores para ver ranking y estadísticas.'));
   app.appendChild(hero);
+
+  // ---- la fecha que viene ----
+  // Un torneo `upcoming` no tiene podios, así que no entra en la lista de abajo:
+  // sin esta tarjeta la portada no dice nada de la fecha que está por empezar y
+  // hay que ir a "Ver todas las fechas" para saber que existe.
+  const porVenir = catalogo().filter(function (t) { return t.estado === 'upcoming'; });
+  const prox = porVenir.length ? porVenir[porVenir.length - 1] : null;
+  if (prox) {
+    const pc = el('button', 'destacado prox');
+    pc.appendChild(el('b', null, 'Próxima fecha'));
+    pc.appendChild(el('div', 'tit', esc(tituloFecha(prox))));
+    pc.appendChild(el('div', 'cuando', esc([ciudadDe(prox.venue), rangoEs(prox.startDate, prox.endDate)].filter(Boolean).join(' · '))));
+    const pn = prox.counts || {}, det = [];
+    if (pn.players) det.push(pn.players + ' inscritos');
+    if (pn.divisions) det.push(pn.divisions + (pn.divisions === 1 ? ' categoría' : ' categorías'));
+    if (det.length) pc.appendChild(el('div', 'cuando', det.join(' · ')));
+    pc.appendChild(el('div', 'pie2', 'Ver inscritos y llaves ›'));
+    pc.onclick = function () { ir({ vista: 'campeonato', tid: prox.tid }); };
+    app.appendChild(pc);
+  }
 
   // ---- lo que de verdad importa: las últimas fechas con sus podios ----
   const fechas = catalogo().filter(function (t) { return t.estado !== 'upcoming'; }).slice(0, 3);
