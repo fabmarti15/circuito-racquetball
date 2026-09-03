@@ -363,6 +363,12 @@ async function buildTournament(tid) {
         if (!nombreDiv[k]) nombreDiv[k] = { es: dd.divisionEs, raw: dd.division };
       });
     });
+    // Las consolaciones de r2sports son el código del cuadro principal con una
+    // "c" delante (cBJB de BJB, cMO de MO). Su nombre se toma prestado del padre
+    // en vez del título de la llave: si no, la misma categoría aparecía dos veces
+    // con dos nombres ("Singles Juveniles B" y "Singles Niños: Juveniles B").
+    const porCodigo = {};
+    divisions.forEach(function (d) { porCodigo[d.code] = d.divID + '_' + d.combinedID; });
     const deLlave = [];
     divisions.forEach(function (d) {
       const key = d.divID + '_' + d.combinedID;
@@ -370,8 +376,11 @@ async function buildTournament(tid) {
       if (!hl || hl.status !== 'ok') return;
       const permitidos = uidsPorDiv[key];
       // Los cuadros combinados (A Oro/Azul/Rojo, consolaciones) tienen un divID
-      // que ningún inscrito declara, así que su nombre sale del título de la llave.
+      // que ningún inscrito declara, así que su nombre sale del padre o, si no
+      // hay padre, del título de la llave.
+      const padre = /^c(.+)$/.test(d.code) ? nombreDiv[porCodigo[d.code.replace(/^c/, '')]] : null;
       const nom = nombreDiv[key] ||
+        (padre ? { es: padre.es + ' Por puestos', raw: padre.raw + ' Consolation' } : null) ||
         (hl.titulo ? { es: R2.traducirCategoria(hl.titulo).replace(' - ', ': '), raw: hl.titulo } : { es: d.nameEs || d.name, raw: d.name });
       hl.matches.forEach(function (m) {
         deLlave.push({

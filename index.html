@@ -329,7 +329,7 @@ const qs = new URLSearchParams(location.search);
 let RUTA = { vista: 'inicio' };     // {vista, tid, cat, uid, sub}
 let T = null;                        // torneo abierto
 let CAT = null, JUG = null, RK = null, HIST = null, TNOM = null;
-let DIA = 'todo', RONDA = 0, CUADRO = false, CAT_PERFIL = '';
+let DIA = 'todo', CATAG = 'todo', RONDA = 0, CUADRO = false, CAT_PERFIL = '';
 // Qué fechas de la portada están desplegadas (por tid). Se conserva al repintar.
 const EXPANDIDAS = {};
 
@@ -432,7 +432,7 @@ function ir(r, reemplazar) {
   RUTA = Object.assign({ vista: 'inicio' }, r);
   const h = '#' + [RUTA.vista, RUTA.tid, RUTA.cat, RUTA.uid].filter(Boolean).map(encodeURIComponent).join('/');
   if (reemplazar) history.replaceState(null, '', h); else history.pushState(null, '', h);
-  RONDA = 0; CUADRO = false;
+  RONDA = 0; CUADRO = false; DIA = 'todo'; CATAG = 'todo';
   pintar(); window.scrollTo(0, 0);
 }
 function leerHash() {
@@ -560,7 +560,10 @@ function nodoJugadores(lista, textoPlano, extra) {
 }
 function filaPartido(m, opts) {
   opts = opts || {};
-  const d = fechaDe(m.day, m.time);
+  // `opts.torneo` porque el perfil de un jugador puede listar partidos de una
+  // fecha distinta a la que se está mirando: la hora se calcula contra las
+  // fechas de SU torneo, no del que quedó cargado en T.
+  const d = fechaDe(m.day, m.time, opts.torneo);
   const c = el('div', 'm' + (opts.live ? ' live' : ''));
   const izq = el('div', 'm-izq');
   if (d) {
@@ -895,12 +898,36 @@ function vCampeonato(app) {
         });
       app.appendChild(chips);
     }
+    // Segunda fila de chips: la categoría. Con 13 divisiones y 112 partidos, la
+    // agenda completa no le sirve a nadie que venga a ver a una persona. Las
+    // consolaciones van dentro de su categoría (baseCategoria), no aparte.
+    const cats = [];
+    g.live.concat(g.next).forEach(function (m) {
+      const b = baseCategoria(m.division);
+      if (b && cats.indexOf(b) < 0) cats.push(b);
+    });
+    cats.sort(function (a, b) { return pesoCategoria(a) - pesoCategoria(b) || a.localeCompare(b); });
+    if (cats.length > 1) {
+      if (CATAG !== 'todo' && cats.indexOf(CATAG) < 0) CATAG = 'todo';
+      const ch2 = el('div', 'chips');
+      [{ v: 'todo', t: 'Todas las categorías' }].concat(cats.map(function (c) { return { v: c, t: nombreDiv(c) }; }))
+        .forEach(function (o) {
+          const b = el('button', 'chip', esc(o.t));
+          b.setAttribute('aria-pressed', CATAG === o.v);
+          b.onclick = function () { CATAG = o.v; pintar(); };
+          ch2.appendChild(b);
+        });
+      app.appendChild(ch2);
+    }
     let dia = '';
-    g.live.concat(g.next).filter(function (m) {
+    const visibles = g.live.concat(g.next).filter(function (m) {
+      if (CATAG !== 'todo' && baseCategoria(m.division) !== CATAG) return false;
       if (DIA === 'todo') return true;
       const d = fechaDe(m.day, m.time, T);
       return d && d.toDateString() === DIA;
-    }).forEach(function (m) {
+    });
+    if (!visibles.length) app.appendChild(el('div', 'vacio', 'No hay partidos con esos filtros.'));
+    visibles.forEach(function (m) {
       const d = fechaDe(m.day, m.time, T), dk = d ? d.toDateString() : '';
       if (dk && dk !== dia) { dia = dk; app.appendChild(el('div', 'dia', DIA_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MES_ES[d.getMonth()])); }
       app.appendChild(filaPartido(m, { live: g.live.indexOf(m) >= 0, dia: false }));
@@ -965,6 +992,16 @@ const PESO_CAT = [
 function pesoCategoria(n) {
   for (const p of PESO_CAT) if (p[0].test(n)) return p[1];
   return 85;
+}
+// Fechas ya bajadas que todavía tienen agenda. La agenda vive en el archivo de
+// cada torneo, no en el del jugador, así que para mostrarle a alguien sus
+// próximos partidos hay que mirar todos los torneos cargados y no solo T.
+function torneosConAgenda() {
+  return Object.keys(cache).map(function (k) { return cache[k]; }).filter(function (tt) {
+    if (!tt || !((tt.schedule || []).length)) return false;
+    const e = estadoDe({ startDate: (tt.tournament || {}).startDate, endDate: (tt.tournament || {}).endDate, counts: tt.counts });
+    return e === 'in-progress' || e === 'upcoming';
+  });
 }
 function categoriasDelTorneo(t) {
   const map = {};
@@ -1507,12 +1544,23 @@ function vJugador(app) {
   }
 
   // ---------- por jugar ----------
-  const prox = ((T && T.schedule) || []).filter(function (mm) {
-    return (mm.lado1 || []).concat(mm.lado2 || []).some(function (x) { return x.uid === j.uid; });
+  // Antes esto solo aparecía si venías del campeonato, porque leía T. Entrando
+  // directo al perfil (o desde la pestaña Jugadores) T era la última fecha
+  // jugada y el bloque no salía nunca, justo cuando más sirve: buscar tu nombre
+  // y ver a qué hora juegas.
+  const prox = [];
+  torneosConAgenda().forEach(function (tt) {
+    (tt.schedule || []).forEach(function (mm) {
+      const suyo = (mm.lado1 || []).concat(mm.lado2 || []).some(function (x) { return x.uid === j.uid; });
+      if (suyo) prox.push({ m: mm, t: tt, d: fechaDe(mm.day, mm.time, tt) });
+    });
   });
+  prox.sort(function (x, y) { return (x.d ? x.d.getTime() : 0) - (y.d ? y.d.getTime() : 0); });
   if (prox.length) {
+    const unaSola = prox.every(function (x) { return x.t.tid === prox[0].t.tid; });
     app.appendChild(el('h2', null, 'Por jugar'));
-    prox.forEach(function (mm) { app.appendChild(filaPartido(mm)); });
+    if (unaSola) app.appendChild(el('div', 'sub', esc(tituloFecha(prox[0].t.tournament || {}))));
+    prox.forEach(function (x) { app.appendChild(filaPartido(x.m, { torneo: x.t, dia: false })); });
   }
 
   // ---------- cara a cara ----------
@@ -2113,7 +2161,12 @@ async function arrancar() {
   const [cat, rk] = await Promise.all([json('./data/index.json'), json('./data/ranking-oficial.json')]);
   CAT = cat; RK = rk;
   pintar();
-  const objetivo = RUTA.tid || (torneoActivo() || {}).tid || (ultimoJugado() || {}).tid;
+  // Se abre primero la fecha con agenda: si hay una en curso, esa; si no, la que
+  // está por empezar. Con la fecha vieja cargada, el perfil de un jugador no
+  // podía mostrarle sus próximos partidos.
+  const porVenir = catalogo().filter(function (x) { return x.estado === 'upcoming'; });
+  const objetivo = RUTA.tid || (torneoActivo() || {}).tid ||
+    (porVenir.length ? porVenir[porVenir.length - 1].tid : '') || (ultimoJugado() || {}).tid;
   // El histórico se pide junto con el resto: si se dejaba para el final, el perfil
   // alcanzaba a mostrar "cargando su carrera".
   const [ju, hi, no] = await Promise.all([
@@ -2132,10 +2185,15 @@ async function arrancar() {
 async function precargarFechas() {
   if (window.RQ_TORNEOS || window.RQ_DATA) return;
   const pendientes = catalogo().map(function (t) { return t.tid; }).filter(function (tid) { return !cache[tid]; });
+  let nuevas = false;
   for (const tid of pendientes) {
     await new Promise(function (r) { setTimeout(r, 400); });
-    await cargarTorneo(tid);
+    const t = await cargarTorneo(tid);
+    if (t && (t.schedule || []).length) nuevas = true;
   }
+  // El perfil de un jugador arma su "Por jugar" con las fechas que estén en
+  // memoria: si llegaron después de dibujar, hay que volver a pintar.
+  if (nuevas && (RUTA.vista === 'jugador' || RUTA.vista === 'inicio')) pintar();
 }
 
 window.addEventListener('popstate', function () { RUTA = leerHash(); RONDA = 0; CUADRO = false; if (RUTA.tid) abrirTorneo(RUTA.tid).then(pintar); else pintar(); });
