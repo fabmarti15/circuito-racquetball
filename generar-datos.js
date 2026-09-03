@@ -16,6 +16,7 @@ const http = require('http');
 const R2 = require(path.join(__dirname, 'parser.js'));
 const VB = require(path.join(__dirname, 'bracket.js'));
 const CORRIGE = require(path.join(__dirname, 'correcciones.js'));
+const HL = require(path.join(__dirname, 'horarios-llaves.js'));
 
 const BASE = 'https://www.r2sports.com/tourney';
 const UA = 'Mozilla/5.0 (compatible; CircuitoRacquetballChile/2.0; +https://github.com/fabmarti15/circuito-racquetball)';
@@ -272,12 +273,25 @@ async function buildTournament(tid) {
   const results = R2.parseResults(rs);
 
   // llaves: árbol completo desde view-bracket.asp (drawOut redirige)
-  let brackets = {};
+  // De la misma bajada se sacan los horarios: la llave trae la hora de cada
+  // partido y es la única fuente cuando el director no ha activado el reporte
+  // oficial. No se vuelve a pedir la página: r2sports bloquea por IP.
+  let brackets = {}, horariosLlave = {};
   await pool(divisions, CONCURRENCIA, async function (d) {
     const key = d.divID + '_' + d.combinedID;
     let p = { available: false, type: 'elim', rounds: [], entrants: [], standings: [], champion: '' };
-    try { p = VB(await g(`${BASE}/drawsOut/drawOut.asp?TID=${tid}&divID=${d.divID}&combinedID=${d.combinedID}`)); }
-    catch (e) { }
+    try {
+      const htmlLlave = await g(`${BASE}/drawsOut/drawOut.asp?TID=${tid}&divID=${d.divID}&combinedID=${d.combinedID}`);
+      p = VB(htmlLlave);
+      // Los nombres en las rondas siguientes vienen abreviados: se expanden con
+      // los inscritos de la división y, si la división no calza (las llaves
+      // combinadas como A Oro/Azul/Rojo tienen otro divID), con todo el torneo.
+      let insc = players.filter(function (x) {
+        return (x.divisions || []).some(function (dd) { return dd.divID === d.divID && dd.combinedID === d.combinedID; });
+      }).map(function (x) { return x.name; });
+      if (!insc.length) insc = players.map(function (x) { return x.name; });
+      horariosLlave[key] = HL(htmlLlave, insc);
+    } catch (e) { }
     brackets[key] = {
       title: d.name, titleEs: d.nameEs, drawType: d.drawType,
       available: !!p.available, type: p.type || 'elim',
@@ -296,28 +310,29 @@ async function buildTournament(tid) {
   // Índice de nombres de este torneo: lo usan tanto los horarios como los partidos
   // jugados para resolver los uid.
   const idxN = buildNameIndex(players);
+  // El reporte de horarios y las llaves traen SOLO nombres. Se ligan a uid usando
+  // como universo los inscritos de esa misma división: así "Rodrigo Salgado Jr."
+  // no se confunde con su papá, y si el nombre igual queda dudoso se marca
+  // ambiguo en vez de mentir.
+  const uidsPorDiv = {};
+  players.forEach(function (p) {
+    (p.divisions || []).forEach(function (d) {
+      const k = d.divID + '_' + d.combinedID;
+      (uidsPorDiv[k] = uidsPorDiv[k] || new Set()).add(p.uid);
+    });
+  });
+  const ligar = function (nombre, permitidos) {
+    return String(nombre || '').split(' / ').map(function (x) { return x.trim(); }).filter(Boolean)
+      .map(function (uno) {
+        const r = resolvePlayer(uno, idxN, permitidos);
+        return { uid: r.uid || '', name: uno, ambiguo: !!r.ambiguo };
+      });
+  };
   // horarios: reporte "upcoming" de todo el torneo
   let schedule = [], scheduleStatus = 'ok', startTimesReady = '';
   try {
     const sc = R2.parseMatchReport(await g(`${BASE}/tourneyDay/mediaMatchResults.asp?TID=${tid}&reportType=upcoming&resultsOption=byDiv&matchDate=all&playerSex=`));
     scheduleStatus = sc.status; startTimesReady = sc.startTimesReady || '';
-    // El reporte de horarios trae SOLO nombres. Se ligan a uid usando como universo
-    // los inscritos de esa misma división: así "Rodrigo Salgado Jr." no se confunde
-    // con su papá, y si el nombre igual queda dudoso se marca ambiguo en vez de mentir.
-    const uidsPorDiv = {};
-    players.forEach(function (p) {
-      (p.divisions || []).forEach(function (d) {
-        const k = d.divID + '_' + d.combinedID;
-        (uidsPorDiv[k] = uidsPorDiv[k] || new Set()).add(p.uid);
-      });
-    });
-    const ligar = function (nombre, permitidos) {
-      return String(nombre || '').split(' / ').map(function (x) { return x.trim(); }).filter(Boolean)
-        .map(function (uno) {
-          const r = resolvePlayer(uno, idxN, permitidos);
-          return { uid: r.uid || '', name: uno, ambiguo: !!r.ambiguo };
-        });
-    };
     (sc.divisions || []).forEach(function (d) {
       const permitidos = uidsPorDiv[d.divID + '_' + d.combinedID];
       d.matches.forEach(function (m) {
@@ -332,6 +347,44 @@ async function buildTournament(tid) {
       });
     });
   } catch (e) { scheduleStatus = 'error'; }
+
+  // Plan B de los horarios: las llaves. El reporte oficial vive detrás de un
+  // interruptor que activa el director del torneo ("Start Times will be available
+  // at the time indicated below"), y mientras no lo active la web se quedaba sin
+  // tablero de "En cancha / Siguiente" aunque r2sports ya publicara la hora de
+  // cada partido dentro del cuadro. Pasó en la 3ª fecha 2026. Ver horarios-llaves.js.
+  if (!schedule.length) {
+    // El nombre lindo de la división ("Singles Juveniles B") solo está en la ficha
+    // de los inscritos; parseDivisions devuelve el código ("BJB").
+    const nombreDiv = {};
+    players.forEach(function (x) {
+      (x.divisions || []).forEach(function (dd) {
+        const k = dd.divID + '_' + dd.combinedID;
+        if (!nombreDiv[k]) nombreDiv[k] = { es: dd.divisionEs, raw: dd.division };
+      });
+    });
+    const deLlave = [];
+    divisions.forEach(function (d) {
+      const key = d.divID + '_' + d.combinedID;
+      const hl = horariosLlave[key];
+      if (!hl || hl.status !== 'ok') return;
+      const permitidos = uidsPorDiv[key];
+      // Los cuadros combinados (A Oro/Azul/Rojo, consolaciones) tienen un divID
+      // que ningún inscrito declara, así que su nombre sale del título de la llave.
+      const nom = nombreDiv[key] ||
+        (hl.titulo ? { es: R2.traducirCategoria(hl.titulo).replace(' - ', ': '), raw: hl.titulo } : { es: d.nameEs || d.name, raw: d.name });
+      hl.matches.forEach(function (m) {
+        deLlave.push({
+          division: nom.es, divisionRaw: nom.raw, drawType: d.drawType,
+          divID: d.divID, combinedID: d.combinedID,
+          round: m.round, day: m.day, time: m.time, court: '', code: m.code,
+          p1: m.p1, p2: m.p2,
+          lado1: ligar(m.p1, permitidos), lado2: ligar(m.p2, permitidos)
+        });
+      });
+    });
+    if (deLlave.length) { schedule = deLlave; scheduleStatus = 'llave'; }
+  }
 
   // partidos jugados: mismo reporte pero "results". Trae día, hora, UID y marcador,
   // que es justo lo que las llaves no dan de forma cronológica.

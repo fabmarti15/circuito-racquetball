@@ -56,7 +56,11 @@
     [/\bSingles\b/gi, 'Singles'], [/\bNovice\b/gi, 'Novicios'], [/\bJuniors\b/gi, 'Juveniles'],
     [/\bJunior\b/gi, 'Juvenil'], [/\bMultibounce\b/gi, 'Multibote'],
     [/\bConsolation\b/gi, 'Por puestos'], [/\bPlayoff\b/gi, 'Por puestos'],
-    [/\bDropdown\b/gi, 'Repechaje'], [/\band Under\b/gi, 'y menores']
+    [/\bDropdown\b/gi, 'Repechaje'], [/\band Under\b/gi, 'y menores'],
+    // Cuadros del formato olímpico: en r2sports son colores en inglés.
+    [/\bA Gold\b/gi, 'A Oro'], [/\bA Blue\b/gi, 'A Azul'],
+    [/\bA Red\b/gi, 'A Rojo'], [/\bA White\b/gi, 'A Blanco'],
+    [/\bGold\b/gi, 'Oro'], [/\bBlue\b/gi, 'Azul'], [/\bRed\b/gi, 'Rojo'], [/\bWhite\b/gi, 'Blanco']
   ];
   // Limpia etiquetas sucias de r2sports: arregla "WoSingles" (W.O. pegado), quita ":" final,
   // dedup de partes redundantes ("Singles Open: Open" -> "Singles Open") y palabras repetidas.

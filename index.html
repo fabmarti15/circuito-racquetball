@@ -38,7 +38,7 @@
 
   /* barra inferior */
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-  .tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+  .tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
   .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 2px 10px;border:0;background:none;color:var(--ink-3);font-size:11.5px;font-weight:700;cursor:pointer;position:relative}
   .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tab[aria-current=true]{color:var(--green)}
@@ -442,16 +442,19 @@ function leerHash() {
   if (v === 'campeonato') return { vista: 'campeonato', tid: p[1], cat: p[2] };
   return { vista: v };
 }
-// Campeonatos salió de la barra: mostraba lo mismo que el inicio con menos
-// detalle. Se llega desde el botón del inicio y desde cualquier podio.
+// Campeonatos vuelve a la barra. Se había sacado por repetir el inicio, pero el
+// inicio solo muestra las tres últimas fechas con podio: la que está por empezar
+// y las de 2025 y 2024 quedaban escondidas detrás de un botón al final de la
+// portada, y nadie lo encontraba.
 const TABS = [
   ['inicio', 'Inicio', '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/>'],
+  ['campeonatos', 'Fechas', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>'],
   ['ranking', 'Ranking', '<path d="M5 20V11M12 20V4M19 20v-7"/>'],
   ['jugadores', 'Jugadores', '<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4s5.8 1.8 7 5.4"/>']
 ];
 function pintarTabs() {
   const c = $('#tabs'); c.innerHTML = '';
-  const activa = { jugador: 'jugadores', campeonato: 'inicio', campeonatos: 'inicio' }[RUTA.vista] || RUTA.vista;
+  const activa = { jugador: 'jugadores', campeonato: 'campeonatos' }[RUTA.vista] || RUTA.vista;
   TABS.forEach(function (t) {
     const b = el('button', 'tab', '<svg viewBox="0 0 24 24" aria-hidden="true">' + t[2] + '</svg>' + t[1]);
     b.setAttribute('aria-current', activa === t[0]);
@@ -795,7 +798,14 @@ function clasificar(t) {
     const min = (now - d) / 60000;
     if (min >= 0 && min <= 75) live.push(m); else if (d > now) next.push(m); else sin.push(m);
   });
-  const orden = function (a, b) { return fechaDe(a.day, a.time, t) - fechaDe(b.day, b.time, t); };
+  // A la misma hora se juegan varios partidos y los cuadros de la portada solo
+  // muestran los primeros: van antes los que tienen los dos nombres. Un
+  // "Por definir vs Por definir" de una consolación no le sirve a nadie de titular.
+  const conNombres = function (m) { return esReal(m.p1) && esReal(m.p2) ? 0 : 1; };
+  const orden = function (a, b) {
+    const d = fechaDe(a.day, a.time, t) - fechaDe(b.day, b.time, t);
+    return d || (conNombres(a) - conNombres(b));
+  };
   live.sort(orden); next.sort(orden);
   return { live: live, next: next, sin: sin };
 }
