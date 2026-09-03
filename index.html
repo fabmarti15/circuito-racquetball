@@ -121,6 +121,14 @@
   .li.top{background:var(--oro-soft)}
   .cards{display:grid;grid-template-columns:1fr;gap:9px;margin-top:8px}
   @media (min-width:560px){ .cards{grid-template-columns:1fr 1fr} }
+  /* Los cuadros son 13 en una fecha grande: con la tarjeta normal la agenda
+     quedaba trece pantallas más abajo. Van a dos columnas y más apretados. */
+  .cards.compacta{grid-template-columns:1fr 1fr;gap:8px}
+  @media (min-width:560px){ .cards.compacta{grid-template-columns:repeat(3,1fr)} }
+  .cards.compacta .card{padding:10px 11px}
+  .cards.compacta .card .t{font-size:9.5px;margin-bottom:2px}
+  .cards.compacta .card .n{font-size:14.5px;line-height:1.25}
+  .cards.compacta .card .d{font-size:11.5px;margin-top:2px}
 
   /* tablero de la portada: cuadros de distinto tamaño, el grande es lo que importa */
   .tablero{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
@@ -907,6 +915,26 @@ function vCampeonato(app) {
   if (RUTA.cat && RUTA.cat.indexOf('k:') === 0) return vistaCuadro(app, RUTA.cat.slice(2));
   if (RUTA.cat) return llaveCategoria(app, RUTA.cat);
 
+  // Los cuadros van primero: es lo que la gente viene a ver. Antes solo se
+  // llegaba a una llave desde un podio, así que mientras la fecha no tuviera
+  // resultados el cuadro era inalcanzable; ahora abre la página.
+  const cus = cuadrosDe(T);
+  if (cus.length) {
+    app.appendChild(el('h2', null, 'Cuadros'));
+    const cont = el('div', 'cards compacta');
+    cus.forEach(function (cu) {
+      const b = el('button', 'card');
+      const n = cu.tipo === 'rr' ? (cu.partidos || []).length
+        : (cu.niveles || []).reduce(function (a, x) { return a + x.partidos.filter(function (m) { return !m.bye; }).length; }, 0);
+      b.appendChild(el('div', 't', cu.tipo === 'rr' ? 'todos contra todos' : 'eliminación'));
+      b.appendChild(el('div', 'n', esc(nombreDiv(cu.nombre || cu.key))));
+      b.appendChild(el('div', 'd', n + (n === 1 ? ' partido' : ' partidos')));
+      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid, cat: 'k:' + cu.key }); };
+      cont.appendChild(b);
+    });
+    app.appendChild(cont);
+  }
+
   const g = clasificar(T);
   if (g.live.length || g.next.length) {
     app.appendChild(el('h2', null, 'Agenda'));
@@ -970,25 +998,6 @@ function vCampeonato(app) {
       }
       app.appendChild(fila);
     });
-  }
-
-  // Los cuadros: hasta ahora solo se llegaba a una llave desde un podio, así que
-  // mientras la fecha no tuviera resultados el cuadro era inalcanzable.
-  const cus = cuadrosDe(T);
-  if (cus.length) {
-    app.appendChild(el('h2', null, 'Cuadros'));
-    const cont = el('div', 'cards');
-    cus.forEach(function (cu) {
-      const b = el('button', 'card');
-      const n = cu.tipo === 'rr' ? (cu.partidos || []).length
-        : (cu.niveles || []).reduce(function (a, x) { return a + x.partidos.filter(function (m) { return !m.bye; }).length; }, 0);
-      b.appendChild(el('div', 't', cu.tipo === 'rr' ? 'todos contra todos' : 'eliminación'));
-      b.appendChild(el('div', 'n', esc(nombreDiv(cu.nombre || cu.key))));
-      b.appendChild(el('div', 'd', n + (n === 1 ? ' partido' : ' partidos')));
-      b.onclick = function () { ir({ vista: 'campeonato', tid: T.tid, cat: 'k:' + cu.key }); };
-      cont.appendChild(b);
-    });
-    app.appendChild(cont);
   }
 
   const pods = podiosUnificados(T);
