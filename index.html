@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-07-27-13">
+<html lang="es" data-v="2026-09-05-01">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -343,6 +343,31 @@
   footer a{color:var(--green-2)}
   footer b{color:var(--ink-2);font-weight:700}
   footer .act{margin-top:10px;padding-top:9px;border-top:1px solid var(--line-2)}
+
+  .torneo-portada{margin:18px 0 12px}
+  .torneo-portada h1{font-size:26px;margin:6px 0}
+  .torneo-portada .sub{margin:4px 0;color:var(--ink-2)}
+  .estado-datos{font-size:12px;color:var(--ink-2);margin:8px 0}
+  .personal{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:10px 0}
+  .personal summary{cursor:pointer;font-weight:700;min-height:28px}
+  .personal .m{padding:8px 0;gap:8px;grid-template-columns:54px minmax(0,1fr)}
+  .personal .m-izq b{font-size:17px}
+  .acciones-persona{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .acciones-persona button{width:auto;padding:8px 12px;min-height:44px;font-size:13px}
+  .acciones-persona button[aria-pressed=true]{background:var(--green-soft);color:var(--green)}
+  .llave-portada h2{font-size:19px;letter-spacing:0;text-transform:none;color:var(--ink);margin-top:20px}
+  .llave-portada .arbol{max-height:450px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:white;padding:12px 8px}
+  .llave-portada .ar-rot{position:sticky;top:0;background:#fff;z-index:2}
+  .otras-categorias{margin-top:12px}
+  .otras-categorias summary{padding:14px;border:1px solid var(--line);border-radius:12px;cursor:pointer;font-weight:700}
+  .otras-categorias .btn{margin-top:7px;text-align:left}
+  .sets-fila{display:flex;align-items:center;gap:8px}
+  .sets-fila .j{flex:1;min-width:0}
+  .sets-puntos{display:flex;gap:5px;font-size:12px;font-variant-numeric:tabular-nums}
+  .sets-puntos span{min-width:18px;text-align:center}
+  .ar-card .j .nom{font-size:12px}
+  .arbol{max-width:100%}
+
 </style>
 </head>
 <body>
@@ -352,6 +377,7 @@
 </div>
 <nav class="tabs"><div class="tabs-in" id="tabs"></div></nav>
 
+<script src="resultados-llaves.js"></script>
 <script>
 'use strict';
 const $ = function (s) { return document.querySelector(s); };
@@ -366,6 +392,90 @@ let CAT = null, JUG = null, RK = null, HIST = null, TNOM = null;
 let DIA = 'todo', CATAG = 'todo', RONDA = 0, CUADRO = false, CAT_PERFIL = '';
 // Qué fechas de la portada están desplegadas (por tid). Se conserva al repintar.
 const EXPANDIDAS = {};
+
+/* Preferencias locales: solo identificadores, sin cuenta ni envío al servidor. */
+const CLAVE_PERSONAS = 'rq-personas-v1';
+let CONSULTA_UID = '', SEGUIDOS_ABIERTO = false, GUARDADO_LOCAL = true;
+function leerPersonas() {
+  try {
+    const p = JSON.parse(localStorage.getItem(CLAVE_PERSONAS) || '{}');
+    return { yo: typeof p.yo === 'string' ? p.yo : '', seguidos: Array.isArray(p.seguidos) ? Array.from(new Set(p.seguidos.filter(function (v) { return typeof v === 'string'; }))) : [] };
+  } catch (e) { return { yo: '', seguidos: [] }; }
+}
+let PERSONAS = leerPersonas();
+function guardarPersonas() {
+  try { localStorage.setItem(CLAVE_PERSONAS, JSON.stringify(PERSONAS)); GUARDADO_LOCAL = true; }
+  catch (e) { GUARDADO_LOCAL = false; }
+  pintar();
+}
+function accionesPersona(j) {
+  const caja = el('div', 'acciones-persona'), uid = String(j.uid || j.id);
+  const yo = el('button', 'btn', PERSONAS.yo === uid ? 'Dejar de usar como mi jugador' : 'Soy yo');
+  yo.setAttribute('aria-pressed', PERSONAS.yo === uid);
+  yo.onclick = function () { PERSONAS.yo = PERSONAS.yo === uid ? '' : uid; PERSONAS.seguidos = PERSONAS.seguidos.filter(function (x) { return x !== PERSONAS.yo; }); CONSULTA_UID = ''; guardarPersonas(); };
+  caja.appendChild(yo);
+  if (PERSONAS.yo !== uid) {
+    const sigue = PERSONAS.seguidos.indexOf(uid) >= 0;
+    const btn = el('button', 'btn', sigue ? 'Dejar de seguir' : 'Seguir'); btn.setAttribute('aria-pressed', sigue);
+    btn.onclick = function () { PERSONAS.seguidos = sigue ? PERSONAS.seguidos.filter(function (x) { return x !== uid; }) : PERSONAS.seguidos.concat(uid); CONSULTA_UID = ''; guardarPersonas(); };
+    caja.appendChild(btn);
+  }
+  return caja;
+}
+function partidosPersona(j) {
+  const lista = [];
+  torneosConAgenda().forEach(function (t) {
+    (t.schedule || []).forEach(function (m) {
+      if (!(m.lado1 || []).concat(m.lado2 || []).some(function (p) { return (p.uid && j.uid && String((porUid(p.uid) || {}).uid || p.uid) === String(j.uid)) || (!p.uid && (j.alias || [j.nombre]).some(function (n) { return norm(n) === norm(p.name); }) && jugadores().filter(function (q) { return (q.alias || [q.nombre]).some(function (n) { return norm(n) === norm(p.name); }); }).length === 1); })) return;
+      const d = fechaDe(m.day, m.time, t);
+      if (d && d.toDateString() !== new Date().toDateString() && d < Date.now()) return;
+      lista.push({ m: m, t: t, d: d });
+    });
+  });
+  return lista.sort(function (a, b) { return (a.d ? +a.d : Infinity) - (b.d ? +b.d : Infinity); });
+}
+function fichaPersonal(j, titulo, acciones) {
+  const caja = el('section', 'personal');
+  caja.appendChild(el('b', null, esc(titulo)));
+  if (titulo !== j.nombre) caja.appendChild(el('div', 'nota', esc(j.nombre)));
+  const lista = partidosPersona(j);
+  function fila(x) {
+    const n = filaPartido(x.m, { torneo: x.t, dia: false });
+    if (x.d && x.d < Date.now()) n.appendChild(el('span', 'nota', 'Sin resultado informado'));
+    return n;
+  }
+  if (!lista.length) caja.appendChild(el('div', 'nota', 'No hay próximos partidos publicados.'));
+  else {
+    caja.appendChild(fila(lista[0]));
+    if (lista.length > 1) {
+      const mas = el('details'); mas.appendChild(el('summary', null, 'Ver más partidos (' + (lista.length - 1) + ')' ));
+      lista.slice(1).forEach(function (x) { mas.appendChild(fila(x)); }); caja.appendChild(mas);
+    }
+  }
+  const link = el('button', 'btn', 'Ver perfil y resultados');
+  link.onclick = function () { ir({ vista: 'jugador', uid: j.uid || j.id }); };
+  if (acciones) caja.appendChild(accionesPersona(j));
+  const gestionar = el('details'); gestionar.appendChild(el('summary', null, 'Ver perfil y opciones'));
+  gestionar.appendChild(link); if (!acciones) gestionar.appendChild(accionesPersona(j)); caja.appendChild(gestionar);
+  return caja;
+}
+function pintarPersonales(app) {
+  if (!GUARDADO_LOCAL) app.appendChild(el('div', 'aviso', 'Este navegador no permite guardar tu selección. Durará mientras mantengas esta página abierta.'));
+  const consulta = porUid(CONSULTA_UID);
+  if (consulta) {
+    const ficha = fichaPersonal(consulta, consulta.nombre, true);
+    const cerrar = el('button', 'btn', 'Cerrar consulta'); cerrar.onclick = function () { CONSULTA_UID = ''; pintar(); }; ficha.appendChild(cerrar); app.appendChild(ficha);
+  }
+  const yo = porUid(PERSONAS.yo);
+  if (yo && PERSONAS.yo !== CONSULTA_UID) app.appendChild(fichaPersonal(yo, 'Tus partidos', false));
+  if (PERSONAS.seguidos.length) {
+    const lista = el('details', 'personal'); lista.open = SEGUIDOS_ABIERTO;
+    lista.ontoggle = function () { if (lista.isConnected) SEGUIDOS_ABIERTO = lista.open; };
+    lista.appendChild(el('summary', null, 'Jugadores que sigues · ' + PERSONAS.seguidos.length));
+    PERSONAS.seguidos.forEach(function (uid) { const j = porUid(uid); if (j) lista.appendChild(fichaPersonal(j, j.nombre, false)); }); app.appendChild(lista);
+  }
+}
+window.addEventListener('storage', function (e) { if (e.key === CLAVE_PERSONAS || e.key === null) { PERSONAS = leerPersonas(); pintar(); } });
 
 /* ---------- fechas ---------- */
 const DIAS = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -451,7 +561,7 @@ const PLACEHOLDER = /^(winner|loser|ganador|perdedor|group|grupo|bye|tbd)\b|^[\s
 function esReal(n) { return !PLACEHOLDER.test(String(n || '')); }
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
 function jugadores() { return (JUG && JUG.jugadores) || []; }
-function porUid(uid) { return jugadores().find(function (j) { return j.uid === String(uid); }) || null; }
+function porUid(uid) { if (!uid) return null; return jugadores().find(function (j) { return j.uid === String(uid) || j.id === String(uid) || (j.uidFusionados || []).map(String).indexOf(String(uid)) >= 0; }) || null; }
 function porNombre(n) {
   const k = norm(n);
   return jugadores().find(function (j) { return (j.alias || []).some(function (a) { return norm(a) === k; }); }) || null;
@@ -709,50 +819,50 @@ function duelo(m, conHora) {
 }
 function vInicio(app) {
   const activo = torneoActivo();
-  const enCurso = activo && T && String(T.tid) === String(activo.tid);
-  const g = enCurso ? clasificar(T) : null;
-
-  // Los cuadros del torneo y la explicación del marcador solo cuando hay algo
-  // pasando: con el torneo cerrado no aportan nada.
-  if (g && (g.live.length || g.next.length)) {
-    const tab = el('div', 'tablero');
-    if (g.live.length) {
-      const box = el('div');
-      g.live.slice(0, 3).forEach(function (m) { box.appendChild(duelo(m, true)); });
-      if (g.live.length > 3) box.appendChild(el('div', 'duelo-pie', 'y ' + (g.live.length - 3) + ' más'));
-      tab.appendChild(tile('viva t2', 'En cancha · ' + g.live.length + (g.live.length === 1 ? ' partido' : ' partidos'), box,
-        function () { ir({ vista: 'campeonato', tid: T.tid }); }, true));
+  const tt = activo && (cache[activo.tid] || (T && String(T.tid) === String(activo.tid) ? T : null));
+  if (activo) {
+    const cab = el('section', 'torneo-portada');
+    cab.appendChild(el('div', 'vivo', 'Campeonato en curso'));
+    cab.appendChild(el('h1', null, esc(tituloFecha(activo))));
+    cab.appendChild(el('div', 'sub', esc(rangoEs(activo.startDate, activo.endDate))));
+    if (tt) {
+      const fecha = tt.checkedAt || tt.updatedAt;
+      cab.appendChild(el('div', 'estado-datos', 'Última consulta: ' + esc(haceCuanto(fecha))));
+      if (Date.now() - new Date(fecha) > 20 * 60000) cab.appendChild(el('div', 'aviso', 'La actualización está atrasada. Los horarios y resultados pueden haber cambiado.'));
     }
-    if (g.next.length) {
-      const m = g.next[0], f = fechaDe(m.day, m.time);
-      const box = el('div', 'hora-gr');
-      box.appendChild(el('b', null, f ? hhmm(f) : '—'));
-      box.appendChild(duelo(m, false));
-      const falta = f ? faltan(f) : null;
-      tab.appendChild(tile(g.live.length ? 't2' : 'verde t2', 'Siguiente' + (falta ? ' · ' + falta : ''), box,
-        function () { ir({ vista: 'campeonato', tid: T.tid }); }));
+    app.appendChild(cab);
+    app.appendChild(buscador('Busca tu nombre y ve cuándo juegas', function (j) { CONSULTA_UID = j.uid || j.id; pintar(); }));
+    pintarPersonales(app);
+    if (!tt) app.appendChild(el('div', 'nota', 'Cargando las llaves del campeonato…'));
+    else {
+      const cuadros = cuadrosDe(tt), open = cuadros.find(function (c) { return c.code === 'MO'; });
+      if (open) {
+        const caja = el('section', 'llave-portada');
+        caja.appendChild(el('h2', null, 'Open varones'));
+        caja.appendChild(el('div', 'sub', 'Resultados por set y próximos cruces'));
+        caja.appendChild(arbolCuadro(open, tt));
+        caja.appendChild(el('div', 'nota', 'Desliza la llave para ver las rondas.'));
+        app.appendChild(caja);
+      } else app.appendChild(el('div', 'nota', 'La llave de Open varones todavía no está disponible.'));
+      const otras = el('details', 'otras-categorias');
+      otras.appendChild(el('summary', null, 'Ver otras categorías'));
+      cuadros.filter(function (c) { return c !== open; }).forEach(function (c) {
+        const btn = el('button', 'btn', esc(c.nombre || c.code));
+        btn.onclick = function () { T = tt; ir({ vista: 'campeonato', tid: tt.tid, cat: 'k:' + c.key }); };
+        otras.appendChild(btn);
+      });
+      app.appendChild(otras);
+      const agenda = el('button', 'btn', 'Ver agenda y campeonato completo'); agenda.style.marginTop = '10px';
+      agenda.onclick = function () { T = tt; ir({ vista: 'campeonato', tid: tt.tid }); }; app.appendChild(agenda);
     }
-    const c1 = el('div');
-    c1.appendChild(el('div', 'cifra', String(g.next.length)));
-    c1.appendChild(el('div', 'pie', 'ver la agenda'));
-    tab.appendChild(tile('', 'Por jugar', c1, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
-    const c2 = el('div');
-    c2.appendChild(el('div', 'cifra', String((T.matches || []).length)));
-    c2.appendChild(el('div', 'pie', 'ver resultados'));
-    tab.appendChild(tile('', 'Ya jugados', c2, function () { ir({ vista: 'campeonato', tid: T.tid }); }));
-    app.appendChild(tab);
-    if (g.live.length) app.appendChild(el('div', 'nota', 'r2sports no publica el marcador punto a punto en este torneo: "en cancha" quiere decir que la hora ya pasó y el resultado todavía no está cargado.'));
+    return;
   }
-
-  // ---- bienvenida ----
-  // Arriba solo se leía "Racquetball Chile · ranking oficial junio 2026" y después
-  // caían los podios: nadie sabía qué era esto ni que podía buscarse a sí mismo.
-  // El buscador es el mismo de la vista Jugadores, para no tener dos.
   const hero = el('div', 'hero');
   hero.appendChild(el('h1', null, 'Resultados de los últimos campeonatos'));
   hero.appendChild(buscador('Busca tu nombre…', function (j) { ir({ vista: 'jugador', uid: j.uid || j.id }); }));
-  hero.appendChild(el('div', 'pista', 'Buscador de jugadores para ver ranking y estadísticas.'));
+  hero.appendChild(el('div', 'pista', 'Busca jugadores para ver ranking y estadísticas.'));
   app.appendChild(hero);
+  pintarPersonales(app);
 
   // ---- la fecha que viene ----
   // Un torneo `upcoming` no tiene podios, así que no entra en la lista de abajo:
@@ -978,7 +1088,7 @@ function vCampeonato(app) {
       app.appendChild(ch2);
     }
     let dia = '';
-    const visibles = g.live.concat(g.next).filter(function (m) {
+    const visibles = g.live.concat(g.next, g.sin.filter(function (m) { const d = fechaDe(m.day, m.time, T); return d && d.toDateString() === new Date().toDateString(); })).filter(function (m) {
       if (CATAG !== 'todo' && baseCategoria(m.division) !== CATAG) return false;
       if (DIA === 'todo') return true;
       const d = fechaDe(m.day, m.time, T);
@@ -989,6 +1099,7 @@ function vCampeonato(app) {
       const d = fechaDe(m.day, m.time, T), dk = d ? d.toDateString() : '';
       if (dk && dk !== dia) { dia = dk; app.appendChild(el('div', 'dia', DIA_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MES_ES[d.getMonth()])); }
       const fila = filaPartido(m, { live: g.live.indexOf(m) >= 0, dia: false, torneo: T });
+      if (g.sin.indexOf(m) >= 0) fila.appendChild(el('span', 'nota', 'Sin resultado informado'));
       // Desde cualquier partido se llega a su cuadro. Es el camino natural: ves
       // "Juveniles B · octavos" y quieres ver el resto de la llave.
       const kk = m.divID != null ? m.divID + '_' + m.combinedID : '';
@@ -1277,7 +1388,7 @@ function esGrupo(nombre) { return /grupo|group|round robin/i.test(nombre); }
 function cuadrosDe(t) {
   const c = (t && t.cuadros) || {};
   return Object.keys(c).map(function (k) { return Object.assign({ key: k }, c[k]); })
-    .filter(function (x) { return x.tipo === 'rr' ? (x.partidos || []).length : (x.niveles || []).length; })
+    .filter(function (x) { return x.tipo === 'rr' || x.tipo === 'lista' ? (x.partidos || []).length : (x.niveles || []).length; })
     .sort(function (a, b) {
       const sa = /por puestos/i.test(a.nombre || '') ? 1 : 0, sb = /por puestos/i.test(b.nombre || '') ? 1 : 0;
       return (pesoCategoria(a.nombre || '') - pesoCategoria(b.nombre || '')) || (sa - sb) ||
@@ -1294,7 +1405,7 @@ function nodoNombre(nombre, clase) {
 }
 function tarjetaCuadro(m, gana, torneo) {
   const c = el('div', 'ar-card' + (m.bye ? ' paso' : ''));
-  const g = gana[m.nivel + '_' + m.pos] || '';
+  const g = m.ganador || gana[m.nivel + '_' + m.pos] || '';
   const marca = function (n) { return g && norm(n) && norm(n) === norm(g) ? 'g' : ''; };
   // Un bye no es un partido: se dibuja con una sola línea. En un cuadro de 32
   // con 18 inscritos hay 14 byes, y con dos líneas cada uno la primera columna
@@ -1305,12 +1416,21 @@ function tarjetaCuadro(m, gana, torneo) {
     c.appendChild(el('div', 'pie', 'pasa sin jugar'));
     return c;
   }
-  c.appendChild(nodoNombre(m.p1, marca(m.p1)));
-  c.appendChild(nodoNombre(m.p2, marca(m.p2)));
+  const juegos = m.games && m.games.length ? m.games : Array.from(String(m.marcador || '').matchAll(/(\d+)\s*-\s*(\d+)/g), function (x) { return { w: +x[1], l: +x[2] }; });
+  [m.p1, m.p2].forEach(function (nombre) {
+    const fila = el('div', 'sets-fila'); fila.appendChild(nodoNombre(nombre, marca(nombre)));
+    if (g && juegos.length) {
+      const puntos = el('div', 'sets-puntos');
+      juegos.forEach(function (juego, i) { const v = norm(nombre) === norm(g) ? juego.w : juego.l; const n = el('span', null, String(v)); n.setAttribute('aria-label', 'Set ' + (i + 1) + ': ' + v); puntos.appendChild(n); });
+      fila.appendChild(puntos);
+    }
+    c.appendChild(fila);
+  });
   const pie = el('div', 'pie');
   const d = fechaDe(m.day, m.time, torneo);
   pie.appendChild(el('span', null, m.bye ? 'pasa sin jugar' : (d ? DIA_ES[d.getDay()].slice(0, 3) + ' ' + hhmm(d) : (m.time || ''))));
-  if (m.marcador) pie.appendChild(el('span', 'mk', esc(m.marcador)));
+  if (m.marcador && !(g && juegos.length)) pie.appendChild(el('span', 'mk', esc(m.marcador)));
+  else if (m.marcador) pie.appendChild(el('span', 'mk', 'Finalizado'));
   else if (m.code) pie.appendChild(el('span', null, esc(m.code)));
   c.appendChild(pie);
   return c;
@@ -1336,7 +1456,7 @@ function arbolCuadro(cu, torneo) {
   const niveles = cu.niveles || [];
   const gana = ganadoresDe(niveles);
   const mayor = niveles.reduce(function (a, n) { return Math.max(a, n.partidos.length); }, 1);
-  inner.style.height = Math.max(240, mayor * 72) + 'px';
+  inner.style.height = Math.max(240, mayor * 92) + 'px';
   niveles.forEach(function (nv, i) {
     const col = el('div', 'ar-col');
     col.appendChild(el('div', 'ar-rot', esc(nv.nombre)));
@@ -1371,11 +1491,11 @@ function vistaCuadro(app, key) {
   const cu = ((T && T.cuadros) || {})[key];
   if (!cu) { app.appendChild(el('div', 'vacio', 'No encontramos ese cuadro.')); return; }
   app.appendChild(el('h2', null, esc(cu.nombre || key)));
-  if (cu.tipo === 'rr') {
+  if (cu.tipo === 'rr' || cu.tipo === 'lista') {
     // Round robin: no hay árbol que dibujar, son todos contra todos. Se muestra la
     // tabla de posiciones si ya hay resultados y la lista de cruces con su hora.
     const jug = ((T.matches || []).filter(function (m) { return baseCategoria(m.division) === baseCategoria(cu.nombre || ''); }));
-    const tabla = posicionesGrupo(jug);
+    const tabla = cu.tipo === 'rr' ? posicionesGrupo(jug) : [];
     if (tabla.length) {
       const t = el('table', 'pos');
       t.innerHTML = '<tr><th>Jugador</th><th>PJ</th><th>G</th><th>P</th><th>Sets</th></tr>';
@@ -1394,10 +1514,7 @@ function vistaCuadro(app, key) {
     }).forEach(function (m) {
       const r = ronda(m.round).nombre;
       if (r !== ronda2) { ronda2 = r; app.appendChild(el('div', 'dia', esc(r))); }
-      app.appendChild(filaPartido({
-        division: cu.nombre, round: '', day: m.day, time: m.time,
-        p1: m.p1, p2: m.p2, lado1: [{ uid: (porNombre(m.p1) || {}).uid || '', name: m.p1 }], lado2: [{ uid: (porNombre(m.p2) || {}).uid || '', name: m.p2 }]
-      }, { torneo: T, dia: false }));
+      app.appendChild(tarjetaCuadro(m, {}, T));
     });
     return;
   }
@@ -1569,6 +1686,7 @@ function vJugadores(app) {
 function vJugador(app) {
   const j = jugadores().find(function (x) { return x.uid === RUTA.uid || x.id === RUTA.uid; });
   if (!j) { app.appendChild(el('div', 'vacio', 'No encontramos a ese jugador.')); return; }
+  app.appendChild(accionesPersona(j));
   const carrera = carreraDe(j);
   const mejorPuesto = j.ranking.slice().sort(function (a, b) { return a.puesto - b.puesto; })[0];
 
@@ -2247,12 +2365,11 @@ function pintarPie() {
     'Resultados y horarios: <a href="https://www.r2sports.com/" target="_blank" rel="noopener">r2sports.com</a>, la plataforma oficial de los torneos. ' +
     'Ranking: documento oficial de la Federación Chilena de Racquetball' + (RK && RK.corte ? ', corte <b>' + esc(RK.corte.etiqueta) + '</b>' : '') + '.'));
   p.appendChild(el('div', null,
-    'Con torneo en curso los datos se revisan <b>cada 10 a 15 minutos</b> entre las 9 y las 23 horas. Sin torneo, <b>una vez por semana</b>. ' +
+    'Durante el torneo buscamos actualizar <b>cada 5 minutos</b>. La fuente y la publicación pueden demorarse. ' +
     (activo ? 'Los horarios los publica la organización y pueden cambiar sin aviso.' : '')));
   // La hora de la última bajada de datos. Se toma la más nueva entre el catálogo
   // (lo que revisa el bot cada 10-15 min) y el torneo que se está mirando.
-  const cuando = [CAT && CAT.updatedAt, T && T.updatedAt]
-    .filter(Boolean).sort().pop();
+  const cuando = T ? (T.checkedAt || T.updatedAt) : CAT && CAT.updatedAt;
   const texto = cuando && fechaHora(cuando);
   if (texto) p.appendChild(el('div', 'act', 'Última actualización: <b>' + esc(texto) + '</b> · ' + esc(haceCuanto(cuando))));
 }
@@ -2323,9 +2440,9 @@ async function cargarTorneo(tid, forzar) {
   const enCurso = guardado && estadoDe({ startDate: (guardado.tournament || {}).startDate, endDate: (guardado.tournament || {}).endDate, counts: guardado.counts }) === 'in-progress';
   const fresco = guardado && (!enCurso || Date.now() - (cacheHora[tid] || 0) < VENCE_MS);
   if (fresco && !forzar) return guardado;
-  if (window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid)) { cache[tid] = window.RQ_DATA; return cache[tid]; }
+  if (window.RQ_DATA && String(window.RQ_DATA.tid) === String(tid)) { cache[tid] = completarResultados(window.RQ_DATA); return cache[tid]; }
   const j = await json('./data/' + tid + '.json');
-  if (j && j.tournament && String(j.tid) === String(tid)) { cache[tid] = j; cacheHora[tid] = Date.now(); return j; }
+  if (j && j.tournament && String(j.tid) === String(tid)) { cache[tid] = completarResultados(j); cacheHora[tid] = Date.now(); return j; }
   return cache[tid] || null;
 }
 // T es el torneo que se está mirando. Se fija aparte de la carga para que un
@@ -2361,7 +2478,7 @@ async function arrancar() {
   if (window.RQ_DATA) {
     CAT = window.RQ_CAT || null; JUG = window.RQ_JUG || null; RK = window.RQ_RK || null;
     HIST = window.RQ_HIST || null; TNOM = window.RQ_TNOM || null;
-    T = window.RQ_DATA; cache[T.tid] = T;
+    T = completarResultados(window.RQ_DATA); cache[T.tid] = T;
     pintar();
     return;
   }
@@ -2416,7 +2533,7 @@ setInterval(function () {
   const a = torneoActivo();
   const tid = RUTA.tid || (a && a.tid);
   if (!tid) return;
-  abrirTorneo(tid, true).then(pintar);
+  abrirTorneo(tid, true).then(function () { if (!document.activeElement || document.activeElement.type !== 'search') pintar(); });
 }, 120000);
 setInterval(revisarVersion, 300000);
 document.addEventListener('visibilitychange', function () {

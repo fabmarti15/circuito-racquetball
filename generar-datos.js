@@ -16,6 +16,7 @@ const http = require('http');
 const R2 = require(path.join(__dirname, 'parser.js'));
 const VB = require(path.join(__dirname, 'bracket.js'));
 const CORRIGE = require(path.join(__dirname, 'correcciones.js'));
+const COMPLETAR = require('./resultados-llaves.js');
 const HL = require(path.join(__dirname, 'horarios-llaves.js'));
 
 const BASE = 'https://www.r2sports.com/tourney';
@@ -28,6 +29,7 @@ const PAUSA_MS = +(process.env.RQ_PAUSA || 900);
 const CONCURRENCIA = +(process.env.RQ_CONCURRENCIA || 2);
 class FuenteBloqueada extends Error {}
 let ultimoGet = 0;
+let consultaFuente = Infinity;
 function esperaTurno() {
   const ahora = Date.now(), falta = ultimoGet + PAUSA_MS - ahora;
   ultimoGet = falta > 0 ? ultimoGet + PAUSA_MS : ahora;
@@ -81,32 +83,29 @@ function decodeBody(buf, contentType) {
   return buf.toString('latin1');
 }
 async function unGet(u) {
+  const cacheDir = process.env.RQ_CACHE_DIR;
+  const archivo = cacheDir && path.join(cacheDir, require('crypto').createHash('sha256').update(u).digest('hex') + '.html');
+  if (archivo && fs.existsSync(archivo)) {
+    consultaFuente = Math.min(consultaFuente, fs.statSync(archivo).mtimeMs);
+    return revisarBloqueo(fs.readFileSync(archivo, 'utf8'));
+  }
   await esperaTurno();
+  consultaFuente = Math.min(consultaFuente, Date.now());
   if (typeof fetch === 'function') {
-    const r = await fetch(u, { headers: { 'User-Agent': UA, 'Accept-Language': 'es' }, redirect: 'follow' });
-    return revisarBloqueo(decodeBody(Buffer.from(await r.arrayBuffer()), r.headers.get('content-type')));
+    const r = await fetch(u, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': UA, 'Accept-Language': 'es' }, redirect: 'follow' });
+    if (!r.ok) throw new Error('r2sports HTTP ' + r.status);
+    const html = revisarBloqueo(decodeBody(Buffer.from(await r.arrayBuffer()), r.headers.get('content-type')));
+    if (archivo) { fs.mkdirSync(cacheDir, { recursive: true }); fs.writeFileSync(archivo, html); }
+    return html;
   }
   return revisarBloqueo(decodeBody(await rawGet(u, 6), ''));
 }
-// El bloqueo de r2sports es temporal: en vez de abandonar la corrida, se espera y
-// se reintenta un par de veces. Con esto una tanda de 10 minutos sobrevive a un
-// bloqueo pasajero en lugar de dejar la web sin actualizar.
-const ESPERAS_BLOQUEO = [60000, 150000];
-async function g(u) {
-  for (let intento = 0; ; intento++) {
-    try { return await unGet(u); }
-    catch (e) {
-      const esperar = (e instanceof FuenteBloqueada) ? ESPERAS_BLOQUEO[intento] : null;
-      if (!esperar) throw e;
-      console.error(`  ⏳ bloqueados; esperando ${Math.round(esperar / 1000)} s antes de reintentar`);
-      await new Promise(function (r) { setTimeout(r, esperar); });
-    }
-  }
-}
+// Un bloqueo aborta la corrida; el próximo ciclo podrá reintentar sin borrar datos.
+async function g(u) { return unGet(u); }
 async function pool(items, n, fn) {
   const res = []; let i = 0;
   const workers = Array.from({ length: Math.min(n, items.length || 1) }, async function () {
-    while (i < items.length) { const idx = i++; try { res[idx] = await fn(items[idx], idx); } catch (e) { res[idx] = null; } }
+    while (i < items.length) { const idx = i++; try { res[idx] = await fn(items[idx], idx); } catch (e) { i = items.length; throw e; } }
   });
   await Promise.all(workers);
   return res;
@@ -262,6 +261,7 @@ function entrantsFor(div, players) {
 }
 
 async function buildTournament(tid) {
+  consultaFuente = Infinity;
   const [dv, en, rs] = await Promise.all([
     g(`${BASE}/divisions/listAllDivs.asp?TID=${tid}&display=YES`),
     g(`${BASE}/EntryList.asp?TID=${tid}&display=YES`),
@@ -271,6 +271,7 @@ async function buildTournament(tid) {
   const divisions = R2.parseDivisions(dv);
   const players = R2.parsePlayers(en);
   const results = R2.parseResults(rs);
+  if (!divisions.length || !players.length) throw new Error("La fuente no entregó divisiones o jugadores; se conserva la versión anterior");
 
   // llaves: árbol completo desde view-bracket.asp (drawOut redirige)
   // De la misma bajada se sacan los horarios: la llave trae la hora de cada
@@ -290,14 +291,14 @@ async function buildTournament(tid) {
         return (x.divisions || []).some(function (dd) { return dd.divID === d.divID && dd.combinedID === d.combinedID; });
       }).map(function (x) { return x.name; });
       if (!insc.length) insc = players.map(function (x) { return x.name; });
-      horariosLlave[key] = HL(htmlLlave, insc);
+      horariosLlave[key] = HL(htmlLlave, insc, d.code);
       // El árbol del cuadro, con la posición real del sorteo. Se guarda aparte de
       // `brackets` porque ese lo arma bracket.js desde los nombres ya jugados y se
       // desarma cuando la llave todavía no tiene resultados.
       if (horariosLlave[key].cuadro) {
         cuadros[key] = Object.assign({ divID: d.divID, combinedID: d.combinedID, code: d.code }, horariosLlave[key].cuadro);
       }
-    } catch (e) { }
+    } catch (e) { throw e; }
     brackets[key] = {
       title: d.name, titleEs: d.nameEs, drawType: d.drawType,
       available: !!p.available, type: p.type || 'elim',
@@ -352,7 +353,7 @@ async function buildTournament(tid) {
         });
       });
     });
-  } catch (e) { scheduleStatus = 'error'; }
+  } catch (e) { if (e instanceof FuenteBloqueada) throw e; scheduleStatus = 'error'; }
 
   // Plan B de los horarios: las llaves. El reporte oficial vive detrás de un
   // interruptor que activa el director del torneo ("Start Times will be available
@@ -439,18 +440,29 @@ async function buildTournament(tid) {
         });
       });
     });
-  } catch (e) { matches = []; }
+  } catch (e) { if (e instanceof FuenteBloqueada) throw e; matches = []; }
 
   // Red de seguridad: si esta corrida no trajo horarios o partidos pero el archivo
   // anterior sí los tenía, se conservan los viejos y se avisa desde cuándo son.
   const previo = leerPrevio(tid);
   let desdeCache = '';
+  // Una llave jugada puede borrar la hora; conservar la agenda que sí la traía.
+  if (previo) Object.values(cuadros).forEach(function (cu) {
+    const ms = cu.partidos || (cu.niveles || []).flatMap(function (n) { return n.partidos; });
+    ms.forEach(function (m) {
+      const antes = (previo.schedule || []).concat(previo.matches || []).find(function (x) {
+        return x.code === m.code && String(x.divID) === String(cu.divID) && String(x.combinedID) === String(cu.combinedID);
+      });
+      if (!m.day && antes) { m.day = antes.day; m.time = antes.time; }
+    });
+  });
   if (previo) {
     if (!schedule.length && (previo.schedule || []).length) {
       schedule = previo.schedule; scheduleStatus = 'cache';
       desdeCache = previo.horariosDesde || previo.updatedAt || '';
     }
     if (!matches.length && (previo.matches || []).length) matches = previo.matches;
+    if (!Object.keys(cuadros || {}).length && Object.keys(previo.cuadros || {}).length) cuadros = previo.cuadros;
     if (!Object.keys(brackets || {}).length && Object.keys(previo.brackets || {}).length) brackets = previo.brackets;
     if (!res.available && (previo.results || {}).available) res = previo.results;
   }
@@ -494,7 +506,7 @@ async function buildTournament(tid) {
 
 
 
-  return {
+  return COMPLETAR({
     tid: String(tid),
     tournament: tournament,
     year: yearOf(tournament),
@@ -524,8 +536,9 @@ async function buildTournament(tid) {
       }).length,
       matches: matches.length
     },
-    updatedAt: new Date().toISOString()
-  };
+    updatedAt: new Date().toISOString(),
+    checkedAt: new Date(Number.isFinite(consultaFuente) ? consultaFuente : Date.now()).toISOString()
+  });
 }
 
 function leerPrevio(tid) {
@@ -580,11 +593,13 @@ function aggregatePlayers(allData) {
         console.log(`  ↻ ${tid} · ${T.tournament.name} · jug ${T.counts.players} · div ${T.counts.divisions} · podios ${T.counts.finishedDivisions} · horarios ${T.counts.scheduled} (${T.scheduleStatus})`);
       } catch (e) {
         console.error(`  ✗ ${tid}: ${e.message}`);
-        if (cached) byTid[tid] = cached;   // se conserva el archivo anterior tal cual
+        if (cached) byTid[tid] = cached;
+        process.exitCode = 1;
         if (e instanceof FuenteBloqueada) {
           console.error('  ⚠ r2sports bloqueó la IP. Se detiene la corrida y NO se toca ningún dato existente.');
           console.error('    Reintentar más tarde, con menos frecuencia (RQ_PAUSA=2000).');
-          break;
+          process.exitCode = 1;
+          return;
         }
       }
     } else { byTid[tid] = cached; reused++; }

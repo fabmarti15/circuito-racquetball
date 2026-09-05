@@ -113,15 +113,27 @@
       var fila = m[1];
       var cod = /viewAppMatch\(\d+\)[^>]*>\s*([A-Za-z]{1,8}\s?\d{1,3})\s*<\/a>/i.exec(fila);
       if (!cod) continue;
-      var vs = /<font[^>]*color="?#000000"?[^>]*>([\s\S]*?)<\/font>\s*<font[^>]*>\s*vs\.?\s*<\/font>\s*<font[^>]*color="?#000000"?[^>]*>([\s\S]*?)<\/font>/i.exec(fila);
-      if (!vs) continue;
+      var nombres = [], ganador = '';
+      var fonts = /<font\b([^>]*)>([^<]*)<\/font>/gi, font;
+      while ((font = fonts.exec(fila))) {
+        if (!/color=["']?#(?:000000|0000FF|0000CC|000099)\b/i.test(font[1])) continue;
+        var nombre = texto(font[2]);
+        if (!nombre || /^(vs\.?|\d[\d :.,-]*|[A-Z]{2,3})$/.test(nombre)) continue;
+        var gano = /\s*-\s*W\s*$/i.test(nombre);
+        nombre = expandir(limpiarCasillero(nombre.replace(/\s*-\s*W\s*$/i, '')), inscritos);
+        if (!nombre) continue;
+        nombres.push(nombre);
+        if (gano) ganador = nombre;
+      }
+      if (nombres.length !== 2) continue;
+      var score = texto(fila).match(/\b\d{1,2}\s*-\s*\d{1,2}(?:\s*,\s*\d{1,2}\s*-\s*\d{1,2})+/);
       var dh = diaHora(fila);
       var fecha = /<font size="3">\s*<b>\s*(\d{1,2})/i.exec(fila);
       out.push({
         code: texto(cod[1]).replace(/\s+/g, ''),
-        round: fecha ? ('fecha ' + fecha[1]) : 'round robin',
+        round: fecha ? ('Ronda ' + fecha[1]) : 'round robin',
         day: dh ? dh.day : '', time: dh ? dh.time : '',
-        p1: expandir(limpiarCasillero(vs[1]), inscritos), p2: expandir(limpiarCasillero(vs[2]), inscritos)
+        p1: nombres[0], p2: nombres[1], ganador: ganador, marcador: ganador && score ? score[0] : ''
       });
     }
     return out;
@@ -141,10 +153,11 @@
     while (n > tope) { k++; tope *= 2; }
     return k;   // 0 final, 2 semis, 3 cuartos, 4 octavos...
   }
-  function parseElim(html, inscritos) {
+  function parseElim(html, inscritos, codigo) {
     var cs = celdas(html), fichas = [];
     for (var i = 0; i < cs.length; i++) {
       var c = cs[i];
+      if (/viewBracket\(/i.test(c.inner)) continue;
       // Casillero del cuadro: celda con borde inferior que trae un <b> (con o sin
       // nombre). Las celdas de borde que solo llevan un spacer no cuentan.
       if (/border-bottom:\s*[0-9.]+pt solid/i.test(c.attrs) && /<b>/i.test(c.inner)) {
@@ -167,12 +180,7 @@
         var dh = diaHora(c.inner);
         // En rondas siguientes la hora va en la celda de al lado.
         if (!dh) { for (var k = i + 1; k <= i + 3 && k < cs.length; k++) { var d2 = diaHora(cs[k].inner); if (d2) { dh = d2; break; } } }
-        // Si ya se jugó, en vez de la hora hay un marcador ("11-9, 3-11, 11-8").
-        var mk = '';
-        for (var q = i; q <= i + 3 && q < cs.length; q++) {
-          var tq = texto(cs[q].inner);
-          if (/^\s*(\d{1,2}\s*-\s*\d{1,2}\s*,?\s*)+$/.test(tq) || /WBF|No\s*Show|Default|Forfeit/i.test(tq)) { mk = tq; break; }
-        }
+        var mk = ''; // Los marcadores se unen por cruce en resultados-llaves.js.
         fichas.push({
           idx: c.idx, tipo: 'match', code: texto(cod[1]).replace(/\s+/g, ''),
           day: dh ? dh.day : '', time: dh ? dh.time : '', marcador: mk
@@ -189,7 +197,9 @@
       for (d = f + 1; d < fichas.length; d++) if (fichas[d].tipo === 'slot') { despues = fichas[d]; break; }
       var n1 = antes ? antes.nombre : '', n2 = despues ? despues.nombre : '';
       var bye = /^bye$/i.test(n1) || /^bye$/i.test(n2);
-      var num = parseInt(String(fichas[f].code).replace(/^[A-Za-z]+/, ''), 10);
+      var resto = codigo ? String(fichas[f].code).slice(codigo.length) : String(fichas[f].code).replace(/^[A-Za-z]+/, '');
+      if ((codigo && String(fichas[f].code).indexOf(codigo) !== 0) || !/^\d+$/.test(resto)) continue;
+      var num = Number(resto);
       var niv = nivelDeCodigo(num);
       var pos = (porNivel[niv] = (porNivel[niv] || 0)); porNivel[niv]++;
       todos.push({
@@ -240,7 +250,7 @@
     return niv;
   }
 
-  function parseBracketTimes(html, inscritos) {
+  function parseBracketTimes(html, inscritos, codigo) {
     var h = String(html || '');
     if (!h) return { status: 'vacio', matches: [] };
     if (/This IP has been blocked/i.test(h)) return { status: 'bloqueado', matches: [] };
@@ -248,10 +258,11 @@
       return { status: 'sin_llave', matches: [] };
     }
     var esRR = /Round Robin/i.test(h) && /viewDrawSwitchByPlayer|Participant Schedule|Versus/i.test(h);
-    var todos = esRR ? parseRR(h, inscritos) : parseElim(h, inscritos);
+    var todos = esRR ? parseRR(h, inscritos) : parseElim(h, inscritos, codigo);
     // El cuadro se queda con todo (para dibujar el árbol); la agenda, solo con
     // lo que tiene hora, porque sin hora no se puede ordenar ni avisar.
-    var cuadro = esRR
+    var esDoble = /Double Elimination|Double Elim|Losers Bracket/i.test(h);
+    var cuadro = esDoble ? { tipo: 'lista', partidos: todos } : esRR
       ? { tipo: 'rr', partidos: todos }
       : { tipo: 'elim', niveles: nivelesDe(todos, inscritos) };
     var ms = todos.filter(function (m) { return m.day && m.time && !m.bye; });
@@ -259,7 +270,7 @@
     // junto a su código: "(MAG) Men's Singles - A Gold". listAllDivs solo da el
     // código, así que los cuadros combinados (Oro/Azul/Rojo, consolaciones) se
     // quedaban con la sigla en pantalla.
-    var tit = /\(([A-Za-z]{1,8})\)\s*([^<\n]{3,80}?)\s*(?:<|\n)/.exec(h);
+    var tit = /\(([A-Za-z0-9]{1,12})\)\s*([^<\n]{3,80}?)\s*(?:<|\n)/.exec(h);
     var titulo = tit ? texto(tit[2]) : '';
     if (!/singles|doubles|dobles/i.test(titulo)) titulo = '';
     return { status: ms.length ? 'ok' : 'sin_horarios', matches: ms, cuadro: cuadro, fuente: 'llave', titulo: titulo };

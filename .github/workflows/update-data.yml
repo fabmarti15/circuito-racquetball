@@ -1,53 +1,64 @@
 name: Actualizar datos del circuito
-# Re-scrapea r2sports en los runners de GitHub y commitea data/.
-# GitHub Pages sirve esos JSON -> la web se actualiza sola, 100% online, sin proxy.
-# El generador solo re-baja el torneo activo y solo commitea si hay datos nuevos.
 on:
-  workflow_dispatch:           # "Actualizar ahora" manual desde la pestaña Actions
+  workflow_dispatch:
   schedule:
-    # Fin de semana de torneo, en horario de juego en Chile (09:00-20:00 = 13:00-00:00 UTC):
-    # cada 10 min. GitHub puede atrasar los cron, así que en la práctica son 10-15 min.
-    - cron: '*/10 13-23 * * 5,6,0'
-    # Cola de la noche chilena (20:00-23:00 vie/sáb/dom = 00:00-03:00 UTC del día siguiente).
-    - cron: '*/10 0-2 * * 6,0,1'
-    # Fuera de torneo, una pasada semanal: miércoles ~21:00 Chile = jueves 01:00 UTC.
+    # Desfasado del inicio de la hora; cubre Chile tanto UTC-4 como UTC-3.
+    - cron: '2-59/5 11-23 * * 5,6,0'
+    - cron: '2-59/5 0-3 * * 6,0,1'
     - cron: '0 1 * * 4'
 permissions:
   contents: write
 concurrency:
   group: update-data
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Generar data/ (solo re-baja el torneo activo)
-        # Sin argumentos: modo incremental. Para forzar todo: node generar-datos.js --all
-        # RQ_PAUSA/RQ_CONCURRENCIA mantienen el ritmo bajo: r2sports bloquea por IP
-        # si se le pega muy seguido, y un bloqueo dejaría la web sin horarios.
+          node-version: '22'
+      - name: Ranking oficial (un fallo no detiene resultados)
+        continue-on-error: true
+        run: |
+          cp data/ranking-oficial.json "$RUNNER_TEMP/ranking-previo.json"
+          if ! (node generar-ranking-oficial.js && node verificar-ranking.js); then
+            cp "$RUNNER_TEMP/ranking-previo.json" data/ranking-oficial.json
+            exit 1
+          fi
+      - name: Actualizar y publicar cada cinco minutos durante el juego
         env:
           RQ_PAUSA: '1200'
           RQ_CONCURRENCIA: '2'
-        run: node generar-datos.js
-      - name: Ranking oficial y registro de jugadores
-        # El ranking sale del documento de la Federación, no de un cálculo propio.
-        # Si no calza con el checklist, verificar-ranking.js falla y no se publica.
+        shell: bash
         run: |
-          node generar-ranking-oficial.js
-          node verificar-ranking.js
-          node generar-jugadores.js
-      - name: Commit si cambió
-        run: |
-          if ! git diff --quiet -- data data.json; then
-            git config user.name "circuito-bot"
-            git config user.email "bot@users.noreply.github.com"
-            git add data data.json
-            git commit -m "Actualizar datos del circuito $(date -u +%FT%TZ)"
-            git push
-          else
-            echo "Sin cambios"
-          fi
+          git config user.name "circuito-bot"
+          git config user.email "bot@users.noreply.github.com"
+          # Una corrida mantiene el ciclo hasta tres horas. Así no dependemos
+          # de que GitHub vuelva a disparar el cron a los cinco minutos.
+          for vuelta in $(seq 1 36); do
+            inicio=$(date +%s)
+            node generar-datos.js
+            node generar-jugadores.js
+            if ! git diff --quiet -- data data.json; then
+              git add data data.json
+              git commit -m "Actualizar datos del circuito $(date -u +%FT%TZ)"
+              publicado=false
+              for intento in 1 2 3; do
+                git pull --rebase --autostash origin main
+                if git push origin HEAD:main; then publicado=true; break; fi
+                sleep 5
+              done
+              if [ "$publicado" != true ]; then exit 1; fi
+            fi
+            # Un fallo detiene la corrida y mantiene los datos previos.
+            # Fuera de un torneo o del horario de juego se hace una sola pasada.
+            if ! node ventana-en-vivo.js; then break; fi
+            if [ "$vuelta" = 36 ]; then break; fi
+            restante=$((300 - $(date +%s) + inicio))
+            if [ "$restante" -gt 0 ]; then sleep "$restante"; fi
+          done
