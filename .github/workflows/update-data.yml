@@ -1,11 +1,23 @@
 name: Actualizar datos del circuito
 on:
   workflow_dispatch:
+    inputs:
+      descubrir:
+        description: 'Revisar también torneos nuevos del Circuito Nacional'
+        type: boolean
+        default: false
+      una_vuelta:
+        description: 'Hacer una sola actualización (verificación manual)'
+        type: boolean
+        default: false
   schedule:
     # Desfasado del inicio de la hora; cubre Chile tanto UTC-4 como UTC-3.
     - cron: '2-59/5 11-23 * * 5,6,0'
     - cron: '2-59/5 0-3 * * 6,0,1'
     - cron: '0 1 * * 4'
+    # Descubrimiento jueves y viernes; conserva la hora con los cambios de Chile.
+    - cron: '0 9,18 * * 4,5'
+      timezone: 'America/Santiago'
 permissions:
   contents: write
 concurrency:
@@ -19,9 +31,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Sincronizar antes de descubrir y generar
+        run: git pull --ff-only origin main
+      - name: Verificar descubrimiento
+        run: node --test probar-descubrimiento.js
+      - name: Descubrir torneos del Circuito Nacional Open y Junior
+        id: descubrimiento
+        if: github.event.schedule == '0 9,18 * * 4,5' || inputs.descubrir
+        run: node descubrir-torneos.js
       - name: Ranking oficial (un fallo no detiene resultados)
         continue-on-error: true
         run: |
@@ -34,6 +55,8 @@ jobs:
         env:
           RQ_PAUSA: '1200'
           RQ_CONCURRENCIA: '2'
+          UNA_VUELTA: ${{ inputs.una_vuelta }}
+          NUEVOS: ${{ steps.descubrimiento.outputs.added }}
         shell: bash
         run: |
           git config user.name "circuito-bot"
@@ -42,11 +65,15 @@ jobs:
           # de que GitHub vuelva a disparar el cron a los cinco minutos.
           for vuelta in $(seq 1 36); do
             inicio=$(date +%s)
+            # Recibir también los cambios de CIRCUITO antes de cada consulta.
+            git pull --rebase --autostash origin main
             node generar-datos.js
             node generar-jugadores.js
-            if ! git diff --quiet -- data data.json; then
-              git add data data.json
-              git commit -m "Actualizar datos del circuito $(date -u +%FT%TZ)"
+            if ! git diff --quiet -- generar-datos.js data data.json; then
+              git add generar-datos.js data data.json
+              mensaje="Actualizar datos del circuito $(date -u +%FT%TZ)"
+              if [ "${NUEVOS:-0}" -gt 0 ]; then mensaje="Agregar $NUEVOS torneo(s) del Circuito Nacional y actualizar datos"; fi
+              git commit -m "$mensaje"
               publicado=false
               for intento in 1 2 3; do
                 git pull --rebase --autostash origin main
@@ -54,9 +81,11 @@ jobs:
                 sleep 5
               done
               if [ "$publicado" != true ]; then exit 1; fi
+              NUEVOS=0
             fi
             # Un fallo detiene la corrida y mantiene los datos previos.
             # Fuera de un torneo o del horario de juego se hace una sola pasada.
+            if [ "$UNA_VUELTA" = true ]; then break; fi
             if ! node ventana-en-vivo.js; then break; fi
             if [ "$vuelta" = 36 ]; then break; fi
             restante=$((300 - $(date +%s) + inicio))

@@ -23,6 +23,21 @@ GitHub Pages sirve index.html + data/  ─────────────�
 - **`generar-datos.js`** — orquesta el scrape y escribe `data/<TID>.json`, `index.json`,
   `ranking.json`, `jugadores.json`. Solo re-baja el torneo activo y solo cambia archivos si hay datos nuevos.
 
+## Torneos nuevos automáticos
+
+El mismo workflow **Actualizar datos del circuito** revisa r2sports los jueves y
+viernes a las **09:00 y 18:00, America/Santiago** (GitHub puede retrasar el inicio).
+`descubrir-torneos.js` busca Racquetball / Chile / Tournament y acepta nombres con
+**Circuito Nacional**, tanto Open como Junior. Excluye mundiales y regionales.
+Revisa torneos desde la última semana y los futuros; agrega TIDs nuevos por año a
+`CIRCUITO`. Después el pipeline habitual genera y publica sus datos como circuito-bot.
+Sin duplicados ni commits de descubrimiento cuando no hay novedades. Si la fuente
+está bloqueada o cambia de formato, falla sin publicar la incorporación parcial.
+
+Pruebas: `node --test probar-descubrimiento.js`. Consulta sin escribir:
+`node descubrir-torneos.js --dry-run`. En la ejecución manual se puede activar
+`descubrir` y `una_vuelta` para verificar una consulta y publicación sin el ciclo largo.
+
 ## Datos (`data/`)
 
 - `index.json` — catálogo de torneos + cuál es el destacado.
