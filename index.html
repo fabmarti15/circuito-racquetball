@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-v="2026-09-05-01">
+<html lang="es" data-v="2026-10-04-home">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -367,6 +367,21 @@
   .sets-puntos span{min-width:18px;text-align:center}
   .ar-card .j .nom{font-size:12px}
   .arbol{max-width:100%}
+  .home-bloque{margin:24px 0}
+  .home-bloque h2{font-size:19px;letter-spacing:0;text-transform:none;color:var(--ink);margin:0 0 8px}
+  .home-cifras{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2);margin:10px 0}
+  .home-llaves{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .home-llaves button{background:white;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;min-height:78px;color:var(--ink);font:inherit;cursor:pointer;overflow-wrap:anywhere}
+  .home-llaves button:hover{border-color:var(--green-2)}
+  .home-llaves b{display:block;font-size:14px;line-height:1.3}
+  .home-llaves span{display:block;font-size:12px;color:var(--green-2);margin-top:6px}
+  .home-bloque .btn{margin-top:8px}
+  .home-bloque .m>.btn,.personal .m>.btn{grid-column:2;justify-self:start;width:auto;padding:6px 10px;font-size:12px;min-height:44px;margin:0}
+  .home-bloque details summary{padding:12px 0;cursor:pointer;font-weight:700}
+  .home-bloque label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:4px}
+  .home-bloque select{width:100%;min-height:44px;padding:10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}
+  .home-llaves button:focus-visible,.home-bloque select:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+  @media(max-width:350px){.home-llaves{grid-template-columns:1fr}}
 
 </style>
 </head>
@@ -395,7 +410,7 @@ const EXPANDIDAS = {};
 
 /* Preferencias locales: solo identificadores, sin cuenta ni envío al servidor. */
 const CLAVE_PERSONAS = 'rq-personas-v1';
-let CONSULTA_UID = '', SEGUIDOS_ABIERTO = false, GUARDADO_LOCAL = true;
+let CONSULTA_UID = '', SEGUIDOS_ABIERTO = false, GUARDADO_LOCAL = true, HOME_RESULT_CAT = '';
 function leerPersonas() {
   try {
     const p = JSON.parse(localStorage.getItem(CLAVE_PERSONAS) || '{}');
@@ -432,7 +447,8 @@ function partidosPersona(j) {
       lista.push({ m: m, t: t, d: d });
     });
   });
-  return lista.sort(function (a, b) { return (a.d ? +a.d : Infinity) - (b.d ? +b.d : Infinity); });
+  const grupo = function (x) { return !x.d ? 2 : x.d >= Date.now() ? 0 : 1; };
+  return lista.sort(function (a, b) { return grupo(a) - grupo(b) || (a.d ? +a.d : Infinity) - (b.d ? +b.d : Infinity); });
 }
 function fichaPersonal(j, titulo, acciones) {
   const caja = el('section', 'personal');
@@ -442,6 +458,9 @@ function fichaPersonal(j, titulo, acciones) {
   function fila(x) {
     const n = filaPartido(x.m, { torneo: x.t, dia: false });
     if (x.d && x.d < Date.now()) n.appendChild(el('span', 'nota', 'Sin resultado informado'));
+    const llave = el('button', 'btn', 'Ver mi llave');
+    llave.onclick = function () { abrirLlavePartido(x.t, x.m); };
+    n.appendChild(llave);
     return n;
   }
   if (!lista.length) caja.appendChild(el('div', 'nota', 'No hay próximos partidos publicados.'));
@@ -467,7 +486,7 @@ function pintarPersonales(app) {
     const cerrar = el('button', 'btn', 'Cerrar consulta'); cerrar.onclick = function () { CONSULTA_UID = ''; pintar(); }; ficha.appendChild(cerrar); app.appendChild(ficha);
   }
   const yo = porUid(PERSONAS.yo);
-  if (yo && PERSONAS.yo !== CONSULTA_UID) app.appendChild(fichaPersonal(yo, 'Tus partidos', false));
+  if (yo && PERSONAS.yo !== CONSULTA_UID) app.appendChild(fichaPersonal(yo, 'Mi próximo partido', false));
   if (PERSONAS.seguidos.length) {
     const lista = el('details', 'personal'); lista.open = SEGUIDOS_ABIERTO;
     lista.ontoggle = function () { if (lista.isConnected) SEGUIDOS_ABIERTO = lista.open; };
@@ -766,7 +785,7 @@ function buscador(placeholder, onPick) {
   const cont = el('div');
   const caja = el('div', 'buscar');
   caja.appendChild(el('span', 'lupa', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>'));
-  const inp = el('input'); inp.type = 'search'; inp.placeholder = placeholder; inp.autocomplete = 'off';
+  const inp = el('input'); inp.type = 'search'; inp.placeholder = placeholder; inp.setAttribute('aria-label', placeholder); inp.autocomplete = 'off';
   caja.appendChild(inp); cont.appendChild(caja);
   const sug = el('div'); cont.appendChild(sug);
   inp.oninput = function () {
@@ -817,6 +836,90 @@ function duelo(m, conHora) {
   box.appendChild(el('div', 'duelo-pie', (conHora && f ? hhmm(f) + ' · ' : '') + esc(String(m.round || '').toLowerCase() + ' ' + m.division)));
   return box;
 }
+function abrirLlavePartido(t, m) {
+  const key = String(m.divID) + '_' + String(m.combinedID);
+  const cuadro = cuadrosDe(t).find(function (c) { return c.key === key || c.nombre === m.division; });
+  T = t;
+  ir({ vista: 'campeonato', tid: t.tid, cat: cuadro ? 'k:' + cuadro.key : baseCategoria(m.division) });
+}
+function agendaPortada(t, ahora) {
+  const hoy = new Date(ahora == null ? Date.now() : ahora);
+  const proximos = [], anteriores = [], sinHora = [];
+  (t.schedule || []).forEach(function (m) {
+    const d = fechaDe(m.day, m.time, t);
+    if (!d) sinHora.push(m);
+    else if (d >= hoy) proximos.push(m);
+    else if (d.toDateString() === hoy.toDateString()) anteriores.push(m);
+  });
+  const ordenar = function (a, b) { return fechaDe(a.day, a.time, t) - fechaDe(b.day, b.time, t); };
+  return { proximos: proximos.sort(ordenar), anteriores: anteriores.sort(ordenar), sinHora: sinHora };
+}
+function pintarAgendaPortada(app, t, abrir) {
+  const agenda = agendaPortada(t), box = el('section', 'home-bloque');
+  box.appendChild(el('h2', null, 'Próximos partidos'));
+  let ultimoDia = '';
+  function agregar(cont, m) {
+    const d = fechaDe(m.day, m.time, t), dia = d && d.toDateString();
+    if (dia && dia !== ultimoDia) {
+      cont.appendChild(el('div', 'dia', DIA_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MES_ES[d.getMonth()])); ultimoDia = dia;
+    }
+    const fila = filaPartido(m, { torneo: t, dia: false });
+    const b = el('button', 'btn', 'Ver llave'); b.onclick = function () { abrirLlavePartido(t, m); };
+    fila.appendChild(b); cont.appendChild(fila);
+  }
+  agenda.proximos.slice(0, 6).forEach(function (m) { agregar(box, m); });
+  if (!agenda.proximos.length) box.appendChild(el('div', 'nota', 'No quedan próximos horarios publicados.'));
+  if (agenda.proximos.length > 6) {
+    const b = el('button', 'btn', 'Ver toda la agenda (' + agenda.proximos.length + ')'); b.onclick = abrir; box.appendChild(b);
+  }
+  if (agenda.anteriores.length) {
+    const pasados = el('details');
+    pasados.appendChild(el('summary', null, 'Sin resultado informado (' + agenda.anteriores.length + ')'));
+    pasados.appendChild(el('div', 'nota', 'Su hora programada ya pasó. El resultado todavía no aparece en la fuente.'));
+    ultimoDia = ''; agenda.anteriores.forEach(function (m) { agregar(pasados, m); }); box.appendChild(pasados);
+  }
+  if (agenda.sinHora.length) {
+    const sin = el('details'); sin.appendChild(el('summary', null, 'Horario por publicar (' + agenda.sinHora.length + ')'));
+    agenda.sinHora.forEach(function (m) { agregar(sin, m); }); box.appendChild(sin);
+  }
+  app.appendChild(box);
+}
+function resultadosPortada(t) {
+  return (t.matches || []).filter(function (m) {
+    return m.ganador && m.perdedor && esReal(m.ganador.name) && esReal(m.perdedor.name);
+  });
+}
+function pintarResultadosPortada(app, t, abrir) {
+  const box = el('section', 'home-bloque');
+  box.appendChild(el('h2', null, 'Resultados por categoría'));
+  const partidos = resultadosPortada(t);
+  if (!partidos.length) {
+    const pods = podiosUnificados(t);
+    pods.slice(0, 2).forEach(function (p) { box.appendChild(bloquePodioSimple(p, abrir)); });
+    if (!pods.length) box.appendChild(el('div', 'nota', 'Todavía no hay resultados publicados.'));
+    app.appendChild(box); return;
+  }
+  const cats = Array.from(new Set(partidos.map(function (m) { return baseCategoria(m.division); })))
+    .sort(function (a, b) { return pesoCategoria(a) - pesoCategoria(b) || a.localeCompare(b, 'es'); });
+  const etiqueta = el('label', null, 'Categoría'); etiqueta.htmlFor = 'home-resultados-cat'; box.appendChild(etiqueta);
+  const select = el('select'); select.id = 'home-resultados-cat';
+  cats.forEach(function (c) { const o = el('option', null, esc(nombreDiv(c))); o.value = c; select.appendChild(o); });
+  if (cats.indexOf(HOME_RESULT_CAT) >= 0) select.value = HOME_RESULT_CAT;
+  box.appendChild(select);
+  const lista = el('div'); box.appendChild(lista);
+  const pintarLista = function () {
+    lista.innerHTML = '';
+    // Se ordenan por fase, nunca se presentan como resultados cronológicamente recientes.
+    const ms = partidos.filter(function (m) { return baseCategoria(m.division) === select.value; })
+      .sort(function (a, b) { return ronda(b.round).orden - ronda(a.round).orden; });
+    ms.slice(0, 4).forEach(function (m) { lista.appendChild(filaResultado(m)); });
+    if (ms.length > 4) {
+      const mas = el('details'); mas.appendChild(el('summary', null, 'Ver los otros ' + (ms.length - 4) + ' resultados'));
+      ms.slice(4).forEach(function (m) { mas.appendChild(filaResultado(m)); }); lista.appendChild(mas);
+    }
+  };
+  select.onchange = function () { HOME_RESULT_CAT = select.value; pintarLista(); }; pintarLista(); app.appendChild(box);
+}
 function vInicio(app) {
   const activo = torneoActivo();
   const tt = activo && (cache[activo.tid] || (T && String(T.tid) === String(activo.tid) ? T : null));
@@ -835,25 +938,39 @@ function vInicio(app) {
     pintarPersonales(app);
     if (!tt) app.appendChild(el('div', 'nota', 'Cargando las llaves del campeonato…'));
     else {
-      const cuadros = cuadrosDe(tt), open = cuadros.find(function (c) { return c.code === 'MO'; });
-      if (open) {
-        const caja = el('section', 'llave-portada');
-        caja.appendChild(el('h2', null, 'Open varones'));
-        caja.appendChild(el('div', 'sub', 'Resultados por set y próximos cruces'));
-        caja.appendChild(arbolCuadro(open, tt));
-        caja.appendChild(el('div', 'nota', 'Desliza la llave para ver las rondas.'));
-        app.appendChild(caja);
-      } else app.appendChild(el('div', 'nota', 'La llave de Open varones todavía no está disponible.'));
-      const otras = el('details', 'otras-categorias');
-      otras.appendChild(el('summary', null, 'Ver otras categorías'));
-      cuadros.filter(function (c) { return c !== open; }).forEach(function (c) {
-        const btn = el('button', 'btn', esc(c.nombre || c.code));
+      const abrir = function () { T = tt; ir({ vista: 'campeonato', tid: tt.tid }); };
+      const cifra = el('div', 'home-cifras');
+      cifra.appendChild(el('span', null, ((tt.players || []).length || (tt.counts || {}).players || 0) + ' inscritos'));
+      cifra.appendChild(el('span', null, ((tt.divisions || []).length || (tt.counts || {}).divisions || 0) + ' categorías'));
+      cifra.appendChild(el('span', null, resultadosPortada(tt).length + ' resultados'));
+      cab.appendChild(cifra);
+      pintarAgendaPortada(app, tt, abrir);
+      const cuadros = cuadrosDe(tt);
+      const llaves = el('section', 'home-bloque');
+      llaves.appendChild(el('h2', null, 'Llaves por categoría'));
+      const rejilla = el('div', 'home-llaves');
+      cuadros.forEach(function (c) {
+        const btn = el('button');
+        btn.appendChild(el('b', null, esc(nombreDiv(c.nombre || c.code || c.key))));
+        btn.appendChild(el('span', null, 'Ver llave ›'));
         btn.onclick = function () { T = tt; ir({ vista: 'campeonato', tid: tt.tid, cat: 'k:' + c.key }); };
-        otras.appendChild(btn);
+        rejilla.appendChild(btn);
       });
-      app.appendChild(otras);
-      const agenda = el('button', 'btn', 'Ver agenda y campeonato completo'); agenda.style.marginTop = '10px';
-      agenda.onclick = function () { T = tt; ir({ vista: 'campeonato', tid: tt.tid }); }; app.appendChild(agenda);
+      if (!cuadros.length) {
+        categoriasDelTorneo(tt).forEach(function (c) {
+          const btn = el('button');
+          btn.appendChild(el('b', null, esc(nombreDiv(c.nombre))));
+          btn.appendChild(el('span', null, 'Ver partidos ›'));
+          btn.onclick = function () { T = tt; ir({ vista: 'campeonato', tid: tt.tid, cat: c.nombre }); };
+          rejilla.appendChild(btn);
+        });
+      }
+      if (rejilla.childElementCount) llaves.appendChild(rejilla);
+      else llaves.appendChild(el('div', 'nota', 'La organización todavía no publicó las llaves.'));
+      app.appendChild(llaves);
+      pintarResultadosPortada(app, tt, abrir);
+      const completo = el('button', 'btn', 'Ver campeonato completo');
+      completo.onclick = abrir; app.appendChild(completo);
     }
     return;
   }
